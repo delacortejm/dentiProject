@@ -157,7 +157,7 @@ class UserManager:
 
 def show_login():
     """Pantalla de login"""
-    st.title("🦷 Sistema Dental - Login")
+    st.title("🦷 Sistema de Gestión de Consultorios Odontológicos - Login")
     
     with st.expander("ℹ️ Usuarios de Demo"):
         st.markdown("""
@@ -445,7 +445,7 @@ def main():
     col1, col2, col3 = st.columns([3, 1, 1])
     
     with col1:
-        st.markdown('<h1 class="main-header">🦷 Sistema de Gestión Dental v2.0</h1>', unsafe_allow_html=True)
+        st.markdown('<h1 class="main-header">🦷 Sistema de Gestión de Consultorios Odontológicos v2.0</h1>', unsafe_allow_html=True)
     
     with col2:
         st.write(f"👤 {user_info.get('nombre', user_id)}")
