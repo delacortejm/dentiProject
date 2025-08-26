@@ -265,7 +265,7 @@ class DataManager:
             'ingresos_mes': round(ingresos_mes, 2)
         }
 
-# 6 - Funciones aux
+# 6 - Funciones auxiliares
 def calculate_price_optimized(time_hours: float, materials_usd: float, cost_per_hour: float, margin: float = 0.40):
     """Calcular precio optimizado"""
     if time_hours <= 0 or materials_usd < 0:
@@ -286,167 +286,427 @@ def calculate_price_optimized(time_hours: float, materials_usd: float, cost_per_
     }
 
 def extraer_monto_numerico(monto_str):
-    """Extrae valor numérico de string de monto"""
+    """Extrae valor numérico de string de monto - Mejorada"""
     try:
         if pd.isna(monto_str):
             return 0
         
         monto_clean = str(monto_str).strip()
-        monto_clean = re.sub(r'[$\s]', '', monto_clean)
-        monto_clean = monto_clean.replace(',', '.')
+        
+        # Remover símbolos comunes de moneda y separadores
+        monto_clean = re.sub(r'[$€£¥₹₽₩¢]', '', monto_clean)  # Símbolos de moneda
+        monto_clean = re.sub(r'[^\d.,\-]', '', monto_clean)    # Solo números, comas, puntos y minus
         
         if not monto_clean:
             return 0
         
-        return float(monto_clean)
+        # Manejar números negativos
+        es_negativo = monto_clean.startswith('-')
+        monto_clean = monto_clean.lstrip('-')
+        
+        # Determinar si el último punto/coma son decimales
+        if ',' in monto_clean and '.' in monto_clean:
+            # Ambos presentes - el último es decimal
+            if monto_clean.rfind(',') > monto_clean.rfind('.'):
+                # Coma es decimal: 1.234.567,89
+                monto_clean = monto_clean.replace('.', '').replace(',', '.')
+            else:
+                # Punto es decimal: 1,234,567.89
+                monto_clean = monto_clean.replace(',', '')
+        elif ',' in monto_clean:
+            # Solo comas - podría ser decimal o separador de miles
+            if monto_clean.count(',') == 1 and len(monto_clean.split(',')[1]) <= 2:
+                # Probablemente decimal: 1234,56
+                monto_clean = monto_clean.replace(',', '.')
+            else:
+                # Separador de miles: 1,234,567
+                monto_clean = monto_clean.replace(',', '')
+        
+        resultado = float(monto_clean)
+        return -resultado if es_negativo else resultado
         
     except Exception as e:
-        st.error(f"Error extrayendo monto de '{monto_str}': {e}")
+        st.warning(f"No se pudo procesar monto '{monto_str}': {e}")
         return 0
 
-def normalizar_fecha_csv(fecha_valor):
-    """Normaliza fechas del CSV"""
+def normalizar_fecha_flexible(fecha_valor):
+    """Normaliza fechas de múltiples formatos"""
     try:
         if pd.isna(fecha_valor):
             return datetime.now().isoformat()
         
         fecha_str = str(fecha_valor).strip()
         
-        formatos = [
-            '%d/%m/%Y',
-            '%d-%m-%Y', 
-            '%Y-%m-%d',
-            '%d/%m/%Y %H:%M:%S',
-            '%d-%m-%Y %H:%M:%S'
+        # Lista amplia de formatos de fecha
+        formatos_fecha = [
+            # Formatos dd/mm/yyyy
+            '%d/%m/%Y', '%d/%m/%y',
+            '%d-%m-%Y', '%d-%m-%y',
+            '%d.%m.%Y', '%d.%m.%y',
+            
+            # Formatos mm/dd/yyyy
+            '%m/%d/%Y', '%m/%d/%y',
+            '%m-%d-%Y', '%m-%d-%y',
+            
+            # Formatos yyyy-mm-dd (ISO)
+            '%Y-%m-%d', '%Y/%m/%d',
+            '%Y.%m.%d', '%Y_%m_%d',
+            
+            # Con hora
+            '%d/%m/%Y %H:%M:%S', '%d/%m/%Y %H:%M',
+            '%d-%m-%Y %H:%M:%S', '%d-%m-%Y %H:%M',
+            '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M',
+            
+            # Formatos con texto
+            '%d de %B de %Y', '%d %B %Y',
+            '%B %d, %Y', '%d %b %Y',
         ]
         
-        for formato in formatos:
+        # Intentar cada formato
+        for formato in formatos_fecha:
             try:
                 fecha_parsed = datetime.strptime(fecha_str, formato)
                 return fecha_parsed.isoformat()
-            except:
+            except ValueError:
                 continue
         
+        # Si no funciona ningún formato, usar pandas
         try:
-            fecha_pandas = pd.to_datetime(fecha_str, dayfirst=True)
-            return fecha_pandas.isoformat()
+            fecha_pandas = pd.to_datetime(fecha_str, dayfirst=True, errors='coerce')
+            if not pd.isna(fecha_pandas):
+                return fecha_pandas.isoformat()
         except:
-            return datetime.now().isoformat()
+            pass
         
-    except:
+        # Último recurso: fecha actual
+        st.warning(f"No se pudo procesar fecha '{fecha_valor}', usando fecha actual")
+        return datetime.now().isoformat()
+        
+    except Exception as e:
+        st.warning(f"Error procesando fecha '{fecha_valor}': {e}")
         return datetime.now().isoformat()
 
-def show_migration_tool(data_manager):
-    """Herramienta de migración integrada en Streamlit"""
-    st.subheader("📥 Migrar Datos Históricos")
+def show_migration_tool_flexible(data_manager):
+    """Herramienta de migración flexible para cualquier CSV"""
+    st.subheader("📥 Migración Flexible de Datos")
     
     st.markdown("""
-    Esta herramienta te permite migrar datos desde tu CSV de Google Sheets al sistema.
+    **🚀 Migración Universal de CSV**
     
-    **Pasos:**
-    1. Asegúrate que `ingresos.csv` esté en la carpeta del proyecto
-    2. Revisa la vista previa de datos
-    3. Ejecuta la migración
+    Esta herramienta puede trabajar con cualquier archivo CSV:
+    - ✅ Mapea automáticamente las columnas de tu archivo
+    - 🔄 Convierte formatos de fecha y moneda
+    - 🎭 Mantiene los datos tal como están
+    - 📊 Vista previa antes de migrar
     """)
     
-    csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
+    # 1. SELECCIÓN DE ARCHIVO
+    uploaded_file = st.file_uploader(
+        "📁 Sube tu archivo CSV", 
+        type=['csv'],
+        help="Sube cualquier archivo CSV con datos de consultas"
+    )
     
-    if not csv_files:
-        st.warning("No se encontraron archivos CSV en el proyecto.")
-        st.markdown("**Para migrar datos:**")
-        st.markdown("1. Exporta tu Google Sheets como CSV")
-        st.markdown("2. Sube el archivo al repositorio GitHub")
-        st.markdown("3. Reinicia la app en Streamlit Cloud")
-        return
-    
-    st.success(f"Archivos CSV encontrados: {', '.join(csv_files)}")
-    
-    archivo_seleccionado = st.selectbox("Selecciona archivo CSV:", csv_files)
-    
-    if archivo_seleccionado:
+    if uploaded_file is not None:
         try:
-            st.subheader("👀 Vista Previa de Datos")
+            # Detectar encoding
+            encoding_options = ['utf-8', 'latin1', 'cp1252', 'iso-8859-1']
+            df = None
+            encoding_usado = None
             
-            df_preview = pd.read_csv(archivo_seleccionado, nrows=10)
-            st.dataframe(df_preview, use_container_width=True)
+            for encoding in encoding_options:
+                try:
+                    df = pd.read_csv(uploaded_file, encoding=encoding)
+                    encoding_usado = encoding
+                    break
+                except UnicodeDecodeError:
+                    continue
             
-            df_full = pd.read_csv(archivo_seleccionado)
+            if df is None:
+                st.error("❌ No se pudo leer el archivo. Verifica el formato.")
+                return
             
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Registros", len(df_full))
-            with col2:
-                st.metric("Columnas", len(df_full.columns))
-            with col3:
-                if 'Monto Total' in df_full.columns:
-                    montos_ejemplo = df_full['Monto Total'].dropna().head(5)
-                    total_estimado = 0
-                    for monto in montos_ejemplo:
-                        monto_num = extraer_monto_numerico(monto)
-                        if monto_num > 1000:
-                            total_estimado += monto_num / 1335
-                        else:
-                            total_estimado += monto_num
-                    
-                    promedio_estimado = total_estimado / min(len(montos_ejemplo), 5)
-                    total_proyecto = promedio_estimado * len(df_full)
-                    st.metric("Ingreso Est. Total", f"${total_proyecto:,.0f} USD")
+            st.success(f"✅ Archivo cargado correctamente (encoding: {encoding_usado})")
             
-            if st.button("🚀 Ejecutar Migración", type="primary", use_container_width=True):
-                with st.spinner("Migrando datos..."):
-                    resultado = ejecutar_migracion_csv(archivo_seleccionado, data_manager)
+            # 2. VISTA PREVIA DEL ARCHIVO
+            with st.expander("👀 Vista Previa del Archivo", expanded=True):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("📊 Total Registros", len(df))
+                with col2:
+                    st.metric("📋 Columnas", len(df.columns))
+                with col3:
+                    st.metric("💾 Tamaño", f"{uploaded_file.size / 1024:.1f} KB")
                 
-                if resultado['success']:
-                    st.success("✅ Migración completada exitosamente!")
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Registros Migrados", resultado['migrados'])
-                    with col2:
-                        st.metric("Errores", resultado['errores'])
-                    with col3:
-                        st.metric("Total USD", f"${resultado['total_usd']:.2f}")
-                    
-                    st.info("🔄 Recarga la página para ver los datos en el Dashboard")
-                    
-                    if st.button("🔄 Recargar App"):
-                        st.rerun()
-                else:
-                    st.error(f"❌ Error en migración: {resultado['error']}")
+                st.markdown("**Primeras 5 filas:**")
+                st.dataframe(df.head(), use_container_width=True)
+                
+                st.markdown("**Columnas disponibles:**")
+                st.write(", ".join(df.columns.tolist()))
             
-        except Exception as e:
-            st.error(f"Error leyendo archivo CSV: {e}")
-
-def ejecutar_migracion_csv(archivo_csv, data_manager):
-    """Ejecuta la migración del CSV dentro de Streamlit"""
-    try:
-        df = pd.read_csv(archivo_csv)
+            # 3. MAPEO DE COLUMNAS
+            st.subheader("🗺️ Mapeo de Columnas")
+            st.markdown("Indica qué columna de tu CSV corresponde a cada campo:")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**📋 Campos Obligatorios:**")
+                
+                col_paciente = st.selectbox(
+                    "👤 Columna de Pacientes *",
+                    options=['-- Seleccionar --'] + df.columns.tolist(),
+                    help="Columna que contiene los nombres de los pacientes"
+                )
+                
+                col_tratamiento = st.selectbox(
+                    "🦷 Columna de Tratamientos *",
+                    options=['-- Seleccionar --'] + df.columns.tolist(),
+                    help="Columna que describe el tratamiento realizado"
+                )
+                
+                col_monto = st.selectbox(
+                    "💰 Columna de Montos *",
+                    options=['-- Seleccionar --'] + df.columns.tolist(),
+                    help="Columna con el precio/monto del tratamiento"
+                )
+            
+            with col2:
+                st.markdown("**📅 Campos Opcionales:**")
+                
+                col_fecha = st.selectbox(
+                    "📅 Columna de Fechas",
+                    options=['-- Usar fecha actual --'] + df.columns.tolist(),
+                    help="Columna con la fecha de la consulta"
+                )
+                
+                col_medio_pago = st.selectbox(
+                    "💳 Columna de Medio de Pago",
+                    options=['-- Usar "No especificado" --'] + df.columns.tolist(),
+                    help="Columna que indica cómo se pagó"
+                )
+                
+                # Configuración de moneda
+                st.markdown("**💱 Configuración de Moneda:**")
+                
+                tipo_moneda = st.radio(
+                    "¿En qué moneda están los montos?",
+                    options=["ARS (Pesos Argentinos)", "USD (Dólares)", "Detectar automáticamente"],
+                    help="Indica la moneda de los montos en tu CSV"
+                )
+            
+            # 4. VISTA PREVIA DEL MAPEO
+            if (col_paciente != '-- Seleccionar --' and 
+                col_tratamiento != '-- Seleccionar --' and 
+                col_monto != '-- Seleccionar --'):
+                
+                st.subheader("👁️ Vista Previa del Mapeo")
+                
+                # Crear muestra de cómo se verán los datos
+                muestra = df.head(5).copy()
+                
+                preview_data = []
+                for _, row in muestra.iterrows():
+                    # Procesar fecha
+                    if col_fecha == '-- Usar fecha actual --':
+                        fecha_procesada = datetime.now().strftime('%d/%m/%Y')
+                    else:
+                        fecha_raw = row[col_fecha]
+                        fecha_iso = normalizar_fecha_flexible(fecha_raw)
+                        fecha_procesada = datetime.fromisoformat(fecha_iso).strftime('%d/%m/%Y')
+                    
+                    # Procesar monto
+                    monto_raw = row[col_monto]
+                    monto_procesado = extraer_monto_numerico(monto_raw)
+                    
+                    # Procesar medio de pago
+                    if col_medio_pago == '-- Usar "No especificado" --':
+                        medio_pago = "No especificado"
+                    else:
+                        medio_pago = str(row[col_medio_pago]) if pd.notna(row[col_medio_pago]) else "No especificado"
+                    
+                    preview_data.append({
+                        'Fecha': fecha_procesada,
+                        'Paciente': str(row[col_paciente]),
+                        'Tratamiento': str(row[col_tratamiento]),
+                        'Monto Original': str(monto_raw),
+                        'Monto Procesado': f"${monto_procesado:,.2f}",
+                        'Medio de Pago': medio_pago
+                    })
+                
+                preview_df = pd.DataFrame(preview_data)
+                st.dataframe(preview_df, use_container_width=True)
+                
+                # 5. ESTADÍSTICAS PRE-MIGRACIÓN
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    pacientes_unicos = df[col_paciente].nunique()
+                    st.metric("👥 Pacientes Únicos", pacientes_unicos)
+                
+                with col2:
+                    tratamientos_unicos = df[col_tratamiento].nunique()
+                    st.metric("🦷 Tipos de Tratamiento", tratamientos_unicos)
+                
+                with col3:
+                    # Calcular total estimado
+                    montos_procesados = df[col_monto].apply(extraer_monto_numerico)
+                    total_estimado = montos_procesados.sum()
+                    
+                    if tipo_moneda == "ARS (Pesos Argentinos)":
+                        total_usd = total_estimado / data_manager.config['tipo_cambio']
+                        st.metric("💰 Total Estimado", f"${total_usd:,.0f} USD")
+                    elif tipo_moneda == "USD (Dólares)":
+                        st.metric("💰 Total Estimado", f"${total_estimado:,.0f} USD")
+                    else:  # Auto-detectar
+                        avg_monto = montos_procesados.mean()
+                        if avg_monto > 1000:
+                            # Probablemente ARS
+                            total_usd = total_estimado / data_manager.config['tipo_cambio']
+                            st.metric("💰 Total Est. (ARS→USD)", f"${total_usd:,.0f} USD")
+                        else:
+                            # Probablemente USD
+                            st.metric("💰 Total Est. (USD)", f"${total_estimado:,.0f} USD")
+                
+                with col4:
+                    registros_validos = len(df.dropna(subset=[col_paciente, col_tratamiento, col_monto]))
+                    st.metric("✅ Registros Válidos", registros_validos)
+                
+                # 6. BOTÓN DE MIGRACIÓN
+                st.markdown("---")
+                
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    st.markdown("### 🚀 ¿Todo se ve correcto?")
+                    st.markdown("Revisa la vista previa y las estadísticas antes de proceder.")
+                
+                with col2:
+                    if st.button("🚀 Ejecutar Migración", type="primary", use_container_width=True):
+                        # EJECUTAR MIGRACIÓN
+                        with st.spinner("⏳ Migrando datos..."):
+                            resultado = ejecutar_migracion_flexible(
+                                df=df,
+                                col_paciente=col_paciente,
+                                col_tratamiento=col_tratamiento,
+                                col_monto=col_monto,
+                                col_fecha=col_fecha if col_fecha != '-- Usar fecha actual --' else None,
+                                col_medio_pago=col_medio_pago if col_medio_pago != '-- Usar "No especificado" --' else None,
+                                tipo_moneda=tipo_moneda,
+                                data_manager=data_manager
+                            )
+                        
+                        # MOSTRAR RESULTADOS
+                        if resultado['success']:
+                            st.success("✅ ¡Migración completada exitosamente!")
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("📥 Registros Migrados", resultado['migrados'])
+                            with col2:
+                                st.metric("❌ Errores", resultado['errores'])
+                            with col3:
+                                st.metric("💰 Total Migrado", f"${resultado['total_usd']:.2f} USD")
+                            
+                            if resultado['errores'] > 0:
+                                st.warning(f"⚠️ {resultado['errores']} registros tuvieron problemas y no se migraron")
+                            
+                            st.info("🔄 Recarga la página para ver los datos migrados en el Dashboard")
+                            
+                            if st.button("🔄 Recargar Aplicación"):
+                                st.rerun()
+                        
+                        else:
+                            st.error(f"❌ Error en la migración: {resultado['error']}")
+            
+            else:
+                st.info("👆 Por favor selecciona al menos las columnas obligatorias para continuar")
         
+        except Exception as e:
+            st.error(f"❌ Error procesando el archivo: {e}")
+    
+    else:
+        # INFORMACIÓN DE AYUDA CUANDO NO HAY ARCHIVO
+        st.info("📁 Sube un archivo CSV para comenzar")
+        
+        with st.expander("💡 Formatos de CSV Compatibles"):
+            st.markdown("""
+            **Esta herramienta puede trabajar con CSVs que contengan:**
+            
+            📋 **Columnas típicas:**
+            - Nombres de pacientes (cualquier nombre de columna)
+            - Tratamientos o servicios realizados
+            - Montos/precios (en cualquier formato)
+            - Fechas (múltiples formatos soportados)
+            - Medios de pago (opcional)
+            
+            💰 **Formatos de montos soportados:**
+            - `1234.56`, `1,234.56`, `1.234,56`
+            - `$1,234.56`, `USD 1234`, `€ 1.234,56`
+            - Montos negativos: `-1234.56`
+            
+            📅 **Formatos de fecha soportados:**
+            - `dd/mm/yyyy`, `mm/dd/yyyy`, `yyyy-mm-dd`
+            - `dd-mm-yyyy`, `dd.mm.yyyy`
+            - Con hora: `dd/mm/yyyy hh:mm:ss`
+            
+            🌍 **Encodings soportados:**
+            - UTF-8, Latin-1, CP1252, ISO-8859-1
+            """)
+
+def ejecutar_migracion_flexible(df, col_paciente, col_tratamiento, col_monto, 
+                               col_fecha=None, col_medio_pago=None, 
+                               tipo_moneda="Detectar automáticamente", data_manager=None):
+    """Ejecuta la migración flexible con mapeo de columnas"""
+    
+    try:
         consultas_migradas = []
         errores = 0
         total_usd = 0
         
         for index, row in df.iterrows():
             try:
-                fecha = normalizar_fecha_csv(row['Fecha'])
-                paciente = str(row['Paciente']).strip() if pd.notna(row['Paciente']) else f'Paciente_{index}'
-                tratamiento = str(row['Tratamiento']).strip() if pd.notna(row['Tratamiento']) else 'Consulta'
-                monto_str = str(row['Monto Total']).strip() if pd.notna(row['Monto Total']) else '0'
-                medio_pago = str(row['Medio de Pago']).strip() if pd.notna(row['Medio de Pago']) else 'Efectivo'
+                # Procesar fecha
+                if col_fecha:
+                    fecha = normalizar_fecha_flexible(row[col_fecha])
+                else:
+                    fecha = datetime.now().isoformat()
                 
-                monto_numerico = extraer_monto_numerico(monto_str)
+                # Procesar paciente
+                paciente = str(row[col_paciente]).strip() if pd.notna(row[col_paciente]) else f'Paciente_{index+1}'
+                
+                # Procesar tratamiento
+                tratamiento = str(row[col_tratamiento]).strip() if pd.notna(row[col_tratamiento]) else 'Consulta'
+                
+                # Procesar monto
+                monto_numerico = extraer_monto_numerico(row[col_monto])
                 
                 if monto_numerico <= 0:
                     errores += 1
                     continue
                 
-                if monto_numerico > 1000:
+                # Determinar ARS y USD según configuración
+                if tipo_moneda == "ARS (Pesos Argentinos)":
                     monto_ars = monto_numerico
                     monto_usd = monto_numerico / data_manager.config['tipo_cambio']
-                else:
+                elif tipo_moneda == "USD (Dólares)":
                     monto_usd = monto_numerico
                     monto_ars = monto_numerico * data_manager.config['tipo_cambio']
+                else:  # Auto-detectar
+                    if monto_numerico > 1000:  # Probablemente ARS
+                        monto_ars = monto_numerico
+                        monto_usd = monto_numerico / data_manager.config['tipo_cambio']
+                    else:  # Probablemente USD
+                        monto_usd = monto_numerico
+                        monto_ars = monto_numerico * data_manager.config['tipo_cambio']
                 
+                # Procesar medio de pago
+                if col_medio_pago:
+                    medio_pago = str(row[col_medio_pago]).strip() if pd.notna(row[col_medio_pago]) else 'No especificado'
+                else:
+                    medio_pago = 'No especificado'
+                
+                # Crear consulta
                 consulta = {
                     'fecha': fecha,
                     'paciente': paciente,
@@ -461,8 +721,10 @@ def ejecutar_migracion_csv(archivo_csv, data_manager):
                 
             except Exception as e:
                 errores += 1
+                st.warning(f"Error en fila {index+1}: {e}")
                 continue
         
+        # Agregar a data_manager
         if consultas_migradas:
             for consulta in consultas_migradas:
                 nueva_fila = {
@@ -496,6 +758,11 @@ def ejecutar_migracion_csv(archivo_csv, data_manager):
             'errores': 0,
             'total_usd': 0
         }
+
+# Función wrapper para mantener compatibilidad
+def show_migration_tool(data_manager):
+    """Wrapper para la función de migración flexible"""
+    show_migration_tool_flexible(data_manager)
 
 def show_dashboard(data_manager, user_info):
     """Mostrar dashboard principal"""
@@ -856,7 +1123,6 @@ def show_reportes(data_manager):
             mime="text/csv"
         )
 
-# 9 - show_login() MEJORADA - SIN CREDENCIALES VISIBLES
 def show_login():
     """Pantalla de login segura"""
     st.title("🦷 Sistema de Gestión de Consultorios Odontológicos - Login")
@@ -939,7 +1205,6 @@ def show_login():
         </div>
         """, unsafe_allow_html=True)
 
-# 10 - main SIMPLIFICADO (SIN BENCHMARKS)
 def main():
     if 'authenticated' not in st.session_state or not st.session_state.authenticated:
         show_login()
@@ -1004,6 +1269,5 @@ def main():
     elif menu == "📥 Migrar Datos":
         show_migration_tool(data_manager)
 
-# 11 - if__name__== "__main__"
 if __name__ == "__main__":
     main()
