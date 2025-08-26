@@ -146,10 +146,8 @@ class UserManager:
                 'config': {
                     'costo_por_hora': 21.68,
                     'tipo_cambio': 1335,
-                    'horas_anuales': 520,
                     'margen_ganancia': 0.40,
-                    'region': 'Interior NOA/NEA',
-                    'factor_regional': 0.95
+                    'region': 'Interior NOA/NEA'
                 }
             }
             
@@ -157,59 +155,7 @@ class UserManager:
             with open(data_file, 'w', encoding='utf-8') as f:
                 json.dump(initial_data, f, ensure_ascii=False, indent=2, default=str)
 
-# 5 - Benchmarks manager
-
-class BenchmarksManager:
-    """Manejo de benchmarks oficiales"""
-    
-    @staticmethod
-    def get_benchmarks_config():
-        return {
-            'version': '2025.2',
-            'fecha_actualizacion': '2025-08-12',
-            'proxima_revision': '2026-02-01',
-            'fuentes': 'Colegios Odontológicos Oficiales + Market Research',
-            'dolar_referencia': 1335,
-            'precios_base_ars': {
-                'consulta': 32916,
-                'consulta_urgencia': 38149,
-                'limpieza': 42343,
-                'operatoria_simple': 52350,
-                'operatoria_compleja': 73521,
-                'endodoncia_unirradicular': 105673,
-                'endodoncia_multirradicular': 154496,
-                'placa_estabilizadora': 150000,
-                'provisorio': 60000,
-                'corona_metalica': 270654,
-                'corona_porcelana': 338321,
-                'extraccion_simple': 71606,
-                'extraccion_compleja': 159609
-            },
-            'ajustes_regionales': {
-                'CABA': 1.4,
-                'GBA Norte': 1.3,
-                'GBA Sur': 1.2,
-                'La Plata': 1.2,
-                'Córdoba Capital': 1.15,
-                'Rosario': 1.15,
-                'Mendoza': 1.1,
-                'Tucumán': 1.05,
-                'Interior Pampeano': 1.0,
-                'Interior NOA/NEA': 0.95,
-                'Patagonia Norte': 1.2,
-                'Patagonia Sur': 1.3
-            },
-            'metricas': {
-                'consultas_mensual_promedio': 45,
-                'horas_semanales_promedio': 35,
-                'margen_minimo_sector': 25,
-                'margen_optimo_sector': 40,
-                'inflacion_anual_estimada': 80
-            }
-        }
-
-
-# 6 - DataManager
+# 5 - DataManager
 class DataManager:
     """Manejo de datos del consultorio - Versión Multi-Usuario"""
     
@@ -243,10 +189,8 @@ class DataManager:
         return {
             'costo_por_hora': 21.68,
             'tipo_cambio': 1335,
-            'horas_anuales': 520,
             'margen_ganancia': 0.40,
-            'region': 'Interior NOA/NEA',
-            'factor_regional': 0.95
+            'region': 'Interior NOA/NEA'
         }
     
     def save_data(self):
@@ -320,7 +264,8 @@ class DataManager:
             'tratamiento_popular': tratamiento_popular,
             'ingresos_mes': round(ingresos_mes, 2)
         }
-# 7 - Funciones aux
+
+# 6 - Funciones aux
 def calculate_price_optimized(time_hours: float, materials_usd: float, cost_per_hour: float, margin: float = 0.40):
     """Calcular precio optimizado"""
     if time_hours <= 0 or materials_usd < 0:
@@ -552,7 +497,7 @@ def ejecutar_migracion_csv(archivo_csv, data_manager):
             'total_usd': 0
         }
 
-def show_dashboard(data_manager, benchmarks, user_info):
+def show_dashboard(data_manager, user_info):
     """Mostrar dashboard principal"""
     st.subheader(f"📊 Dashboard - {user_info.get('nombre', 'Usuario')}")
     
@@ -744,70 +689,8 @@ def show_calculadora_precios(data_manager):
         
         precio_ars = resultado['precio_final'] * data_manager.config['tipo_cambio']
         st.info(f"💱 Precio en ARS: ${precio_ars:,.0f}")
-# 8 - Funciones Show
-def show_benchmarks(data_manager, benchmarks):
-    """Mostrar benchmarks oficiales"""
-    st.subheader("📊 Benchmarks Oficiales")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("📋 Versión", benchmarks['version'])
-        st.metric("💱 Dólar Referencia", f"${benchmarks['dolar_referencia']} ARS")
-    
-    with col2:
-        st.metric("📅 Actualizado", benchmarks['fecha_actualizacion'])
-        st.metric("🌍 Su Región", data_manager.config['region'])
-    
-    with col3:
-        st.metric("📊 Factor Regional", f"{data_manager.config['factor_regional']:.2f}")
-        ajuste_porcentual = (data_manager.config['factor_regional'] - 1) * 100
-        st.metric("📈 Ajuste", f"{ajuste_porcentual:+.0f}%")
-    
-    st.subheader("💰 Precios de Referencia Ajustados")
-    
-    precios_data = []
-    for tratamiento, precio_base in benchmarks['precios_base_ars'].items():
-        precio_regional = precio_base * data_manager.config['factor_regional']
-        precio_usd = precio_regional / benchmarks['dolar_referencia']
-        
-        precios_data.append({
-            'Tratamiento': tratamiento.replace('_', ' ').title(),
-            'Precio Base (ARS)': f"${precio_base:,.0f}",
-            'Precio Regional (ARS)': f"${precio_regional:,.0f}",
-            'Precio (USD)': f"${precio_usd:.2f}"
-        })
-    
-    df_precios = pd.DataFrame(precios_data)
-    st.dataframe(df_precios, use_container_width=True)
-    
-    if not data_manager.consultas.empty:
-        st.subheader("📈 Análisis de Su Práctica")
-        
-        resumen = data_manager.get_resumen()
-        precio_consulta_benchmark = (benchmarks['precios_base_ars']['consulta'] * 
-                                   data_manager.config['factor_regional'] / 
-                                   benchmarks['dolar_referencia'])
-        
-        diferencia = ((resumen['promedio_consulta'] / precio_consulta_benchmark - 1) * 100)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.metric("📊 Su Promedio", f"${resumen['promedio_consulta']} USD")
-            st.metric("🎯 Benchmark", f"${precio_consulta_benchmark:.2f} USD")
-        
-        with col2:
-            if diferencia < -15:
-                st.error(f"🚨 Sus precios están {abs(diferencia):.1f}% por debajo del sector")
-            elif diferencia < -5:
-                st.warning(f"⚠️ Oportunidad de ajuste: {abs(diferencia):.1f}%")
-            elif diferencia > 30:
-                st.info(f"📈 Precios por encima del promedio: +{diferencia:.1f}%")
-            else:
-                st.success(f"✅ Precios competitivos: {diferencia:+.1f}%")
 
-def show_configuracion(data_manager, benchmarks):
+def show_configuracion(data_manager):
     """Configuración del sistema"""
     st.subheader("⚙️ Configuración del Sistema")
     
@@ -831,21 +714,18 @@ def show_configuracion(data_manager, benchmarks):
                 value=int(data_manager.config['margen_ganancia'] * 100),
                 step=5
             ) / 100
-            
-            nuevas_horas = st.number_input(
-                "⏰ Horas Anuales de Trabajo",
-                min_value=100,
-                value=data_manager.config['horas_anuales'],
-                step=10
-            )
         
         with col2:
             st.write("🌍 Configuración Regional")
             
             nueva_region = st.selectbox(
                 "📍 Su Región",
-                list(benchmarks['ajustes_regionales'].keys()),
-                index=list(benchmarks['ajustes_regionales'].keys()).index(data_manager.config['region'])
+                ["CABA", "GBA Norte", "GBA Sur", "La Plata", "Córdoba Capital", 
+                 "Rosario", "Mendoza", "Tucumán", "Interior Pampeano", 
+                 "Interior NOA/NEA", "Patagonia Norte", "Patagonia Sur"],
+                index=["CABA", "GBA Norte", "GBA Sur", "La Plata", "Córdoba Capital", 
+                       "Rosario", "Mendoza", "Tucumán", "Interior Pampeano", 
+                       "Interior NOA/NEA", "Patagonia Norte", "Patagonia Sur"].index(data_manager.config['region'])
             )
             
             nuevo_cambio = st.number_input(
@@ -854,9 +734,6 @@ def show_configuracion(data_manager, benchmarks):
                 value=float(data_manager.config['tipo_cambio']),
                 step=10.0
             )
-            
-            factor_auto = benchmarks['ajustes_regionales'][nueva_region]
-            st.info(f"📊 Factor regional automático: {factor_auto} ({(factor_auto-1)*100:+.0f}%)")
         
         guardar = st.form_submit_button("💾 Guardar Configuración", type="primary")
         
@@ -864,9 +741,7 @@ def show_configuracion(data_manager, benchmarks):
             data_manager.config.update({
                 'costo_por_hora': nuevo_costo,
                 'margen_ganancia': nuevo_margen,
-                'horas_anuales': nuevas_horas,
                 'region': nueva_region,
-                'factor_regional': benchmarks['ajustes_regionales'][nueva_region],
                 'tipo_cambio': nuevo_cambio
             })
             
@@ -980,6 +855,7 @@ def show_reportes(data_manager):
             file_name=f"reporte_dental_{fecha_inicio}_{fecha_fin}.csv",
             mime="text/csv"
         )
+
 # 9 - show_login() MEJORADA - SIN CREDENCIALES VISIBLES
 def show_login():
     """Pantalla de login segura"""
@@ -994,7 +870,6 @@ def show_login():
         - Dashboard con métricas en tiempo real
         - Gestión de consultas y pacientes
         - Calculadora de precios profesional
-        - Benchmarks del sector odontológico
         - Reportes detallados y exportación
         - Sistema multi-usuario con datos separados
         
@@ -1064,7 +939,7 @@ def show_login():
         </div>
         """, unsafe_allow_html=True)
 
-# 10 - main
+# 10 - main SIMPLIFICADO (SIN BENCHMARKS)
 def main():
     if 'authenticated' not in st.session_state or not st.session_state.authenticated:
         show_login()
@@ -1091,15 +966,21 @@ def main():
         st.session_state.data_manager = DataManager(user_id=user_id)
     
     data_manager = st.session_state.data_manager
-    benchmarks = BenchmarksManager.get_benchmarks_config()
     
     with st.sidebar:
-        st.image("https://via.placeholder.com/200x100/3b82f6/ffffff?text=Dental+v2.0", width=200)
+        # SIDEBAR SIN IMAGEN ROTA
+        st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: linear-gradient(90deg, #3b82f6 0%, #1e40af 100%); border-radius: 0.5rem; margin-bottom: 1rem; color: white;'>
+        <h3>🦷 Dental v2.0</h3>
+        <p style='margin: 0; font-size: 0.9em;'>Sistema de Gestión</p>
+        </div>
+        """, unsafe_allow_html=True)
         
+        # MENÚ SIMPLIFICADO (SIN BENCHMARKS)
         menu = st.selectbox(
             "📋 Menú Principal",
             ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Calculadora de Precios", 
-             "📊 Benchmarks", "⚙️ Configuración", "📈 Reportes", "📥 Migrar Datos"]
+             "⚙️ Configuración", "📈 Reportes", "📥 Migrar Datos"]
         )
         
         st.markdown("---")
@@ -1109,16 +990,15 @@ def main():
         st.metric("👥 Consultas", resumen['total_consultas'])
         st.metric("📊 Promedio", f"${resumen['promedio_consulta']} USD")
     
+    # NAVEGACIÓN SIMPLIFICADA (SIN BENCHMARKS)
     if menu == "🏠 Dashboard":
-        show_dashboard(data_manager, benchmarks, user_info)
+        show_dashboard(data_manager, user_info)
     elif menu == "➕ Nueva Consulta":
         show_nueva_consulta(data_manager)
     elif menu == "💰 Calculadora de Precios":
         show_calculadora_precios(data_manager)
-    elif menu == "📊 Benchmarks":
-        show_benchmarks(data_manager, benchmarks)
     elif menu == "⚙️ Configuración":
-        show_configuracion(data_manager, benchmarks)
+        show_configuracion(data_manager)
     elif menu == "📈 Reportes":
         show_reportes(data_manager)
     elif menu == "📥 Migrar Datos":
@@ -1127,6 +1007,3 @@ def main():
 # 11 - if__name__== "__main__"
 if __name__ == "__main__":
     main()
-
-
-
