@@ -12,7 +12,7 @@ import numpy as np
 
 # Configuración de la página
 st.set_page_config(
-    page_title="🦷 Gestión Dental v2.0",
+    page_title="Gestión de Consultorios Odontológicos v2.0",
     page_icon="🦷",
     layout="wide",
     initial_sidebar_state="expanded"
