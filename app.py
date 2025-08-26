@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, date
 import json
 import os
+import re
 from typing import Dict, List, Tuple
 import numpy as np
 
@@ -259,7 +260,7 @@ def main():
         menu = st.selectbox(
             "📋 Menú Principal",
             ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Calculadora de Precios", 
-             "📊 Benchmarks", "⚙️ Configuración", "📈 Reportes", "🎯 Planificación"]
+             "📊 Benchmarks", "⚙️ Configuración", "📈 Reportes", "🎯 Planificación", "📥 Migrar Datos"]
         )
         
         st.markdown("---")
@@ -283,8 +284,265 @@ def main():
         show_configuracion(data_manager, benchmarks)
     elif menu == "📈 Reportes":
         show_reportes(data_manager)
-    elif menu == "🎯 Planificación":
-        show_planificacion(data_manager, benchmarks)
+    elif menu == "📥 Migrar Datos":
+        show_migration_tool(data_manager)
+
+def extraer_monto_numerico(monto_str):
+    """Extrae valor numérico de string de monto"""
+    try:
+        if pd.isna(monto_str):
+            return 0
+        
+        # Convertir a string y limpiar
+        monto_clean = str(monto_str).strip()
+        
+        # Remover símbolos ($, espacios, comas para miles)
+        monto_clean = re.sub(r'[$\s]', '', monto_clean)
+        
+        # Reemplazar comas por puntos para decimales
+        monto_clean = monto_clean.replace(',', '.')
+        
+        # Si quedó vacío
+        if not monto_clean:
+            return 0
+        
+        return float(monto_clean)
+        
+    except Exception as e:
+        st.error(f"Error extrayendo monto de '{monto_str}': {e}")
+        return 0
+
+def normalizar_fecha_csv(fecha_valor):
+    """Normaliza fechas del CSV"""
+    try:
+        if pd.isna(fecha_valor):
+            return datetime.now().isoformat()
+        
+        fecha_str = str(fecha_valor).strip()
+        
+        # Formatos comunes argentinos
+        formatos = [
+            '%d/%m/%Y',
+            '%d-%m-%Y', 
+            '%Y-%m-%d',
+            '%d/%m/%Y %H:%M:%S',
+            '%d-%m-%Y %H:%M:%S'
+        ]
+        
+        for formato in formatos:
+            try:
+                fecha_parsed = datetime.strptime(fecha_str, formato)
+                return fecha_parsed.isoformat()
+            except:
+                continue
+        
+        # Usar pandas como fallback
+        try:
+            fecha_pandas = pd.to_datetime(fecha_str, dayfirst=True)
+            return fecha_pandas.isoformat()
+        except:
+            return datetime.now().isoformat()
+        
+    except:
+        return datetime.now().isoformat()
+
+def show_migration_tool(data_manager):
+    """Herramienta de migración integrada en Streamlit"""
+    st.subheader("📥 Migrar Datos Históricos")
+    
+    st.markdown("""
+    Esta herramienta te permite migrar datos desde tu CSV de Google Sheets al sistema.
+    
+    **Pasos:**
+    1. Asegúrate que `ingresos.csv` esté en la carpeta del proyecto
+    2. Revisa la vista previa de datos
+    3. Ejecuta la migración
+    """)
+    
+    # Verificar si existe el CSV
+    csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
+    
+    if not csv_files:
+        st.warning("No se encontraron archivos CSV en el proyecto.")
+        st.markdown("**Para migrar datos:**")
+        st.markdown("1. Exporta tu Google Sheets como CSV")
+        st.markdown("2. Sube el archivo al repositorio GitHub")
+        st.markdown("3. Reinicia la app en Streamlit Cloud")
+        return
+    
+    st.success(f"Archivos CSV encontrados: {', '.join(csv_files)}")
+    
+    # Seleccionar archivo a migrar
+    archivo_seleccionado = st.selectbox("Selecciona archivo CSV:", csv_files)
+    
+    if archivo_seleccionado:
+        try:
+            # Vista previa del CSV
+            st.subheader("👀 Vista Previa de Datos")
+            
+            df_preview = pd.read_csv(archivo_seleccionado, nrows=10)
+            st.dataframe(df_preview, use_container_width=True)
+            
+            # Información del archivo
+            df_full = pd.read_csv(archivo_seleccionado)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Registros", len(df_full))
+            with col2:
+                st.metric("Columnas", len(df_full.columns))
+            with col3:
+                # Estimar total en USD
+                if 'Monto Total' in df_full.columns:
+                    montos_ejemplo = df_full['Monto Total'].dropna().head(5)
+                    total_estimado = 0
+                    for monto in montos_ejemplo:
+                        monto_num = extraer_monto_numerico(monto)
+                        if monto_num > 1000:  # ARS
+                            total_estimado += monto_num / 1335
+                        else:  # USD
+                            total_estimado += monto_num
+                    
+                    promedio_estimado = total_estimado / min(len(montos_ejemplo), 5)
+                    total_proyecto = promedio_estimado * len(df_full)
+                    st.metric("Ingreso Est. Total", f"${total_proyecto:,.0f} USD")
+            
+            # Análisis de columnas
+            st.subheader("📋 Análisis de Columnas")
+            
+            for col in df_full.columns:
+                with st.expander(f"Columna: {col}"):
+                    valores_unicos = df_full[col].nunique()
+                    valores_nulos = df_full[col].isna().sum()
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Valores únicos:** {valores_unicos}")
+                        st.write(f"**Valores nulos:** {valores_nulos}")
+                    
+                    with col2:
+                        # Mostrar ejemplos
+                        ejemplos = df_full[col].dropna().head(3).tolist()
+                        st.write(f"**Ejemplos:** {ejemplos}")
+            
+            # Botón de migración
+            st.markdown("---")
+            
+            if st.button("🚀 Ejecutar Migración", type="primary", use_container_width=True):
+                with st.spinner("Migrando datos..."):
+                    resultado = ejecutar_migracion_csv(archivo_seleccionado, data_manager)
+                
+                if resultado['success']:
+                    st.success("✅ Migración completada exitosamente!")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Registros Migrados", resultado['migrados'])
+                    with col2:
+                        st.metric("Errores", resultado['errores'])
+                    with col3:
+                        st.metric("Total USD", f"${resultado['total_usd']:.2f}")
+                    
+                    st.info("🔄 Recarga la página para ver los datos en el Dashboard")
+                    
+                    if st.button("🔄 Recargar App"):
+                        st.rerun()
+                else:
+                    st.error(f"❌ Error en migración: {resultado['error']}")
+            
+        except Exception as e:
+            st.error(f"Error leyendo archivo CSV: {e}")
+
+def ejecutar_migracion_csv(archivo_csv, data_manager):
+    """Ejecuta la migración del CSV dentro de Streamlit"""
+    try:
+        df = pd.read_csv(archivo_csv)
+        
+        consultas_migradas = []
+        errores = 0
+        total_usd = 0
+        
+        for index, row in df.iterrows():
+            try:
+                # Extraer y limpiar datos
+                fecha = normalizar_fecha_csv(row['Fecha'])
+                paciente = str(row['Paciente']).strip() if pd.notna(row['Paciente']) else f'Paciente_{index}'
+                tratamiento = str(row['Tratamiento']).strip() if pd.notna(row['Tratamiento']) else 'Consulta'
+                monto_str = str(row['Monto Total']).strip() if pd.notna(row['Monto Total']) else '0'
+                medio_pago = str(row['Medio de Pago']).strip() if pd.notna(row['Medio de Pago']) else 'Efectivo'
+                
+                # Extraer monto numérico
+                monto_numerico = extraer_monto_numerico(monto_str)
+                
+                if monto_numerico <= 0:
+                    errores += 1
+                    continue
+                
+                # Lógica argentina: >$1000 = ARS
+                if monto_numerico > 1000:
+                    monto_ars = monto_numerico
+                    monto_usd = monto_numerico / data_manager.config['tipo_cambio']
+                else:
+                    monto_usd = monto_numerico
+                    monto_ars = monto_numerico * data_manager.config['tipo_cambio']
+                
+                consulta = {
+                    'fecha': fecha,
+                    'paciente': paciente,
+                    'tratamiento': tratamiento,
+                    'monto_ars': round(monto_ars, 2),
+                    'monto_usd': round(monto_usd, 2),
+                    'medio_pago': medio_pago
+                }
+                
+                consultas_migradas.append(consulta)
+                total_usd += monto_usd
+                
+            except Exception as e:
+                errores += 1
+                continue
+        
+        # Agregar consultas al data manager
+        if consultas_migradas:
+            # Limpiar datos existentes si es necesario
+            confirmacion = True  # En producción podrías pedir confirmación
+            
+            if confirmacion:
+                # Agregar consultas una por una o en batch
+                for consulta in consultas_migradas:
+                    nueva_fila = {
+                        'fecha': consulta['fecha'],
+                        'paciente': consulta['paciente'], 
+                        'tratamiento': consulta['tratamiento'],
+                        'monto_ars': consulta['monto_ars'],
+                        'monto_usd': consulta['monto_usd'],
+                        'medio_pago': consulta['medio_pago']
+                    }
+                    
+                    # Agregar al DataFrame
+                    if data_manager.consultas.empty:
+                        data_manager.consultas = pd.DataFrame([nueva_fila])
+                    else:
+                        data_manager.consultas = pd.concat([data_manager.consultas, pd.DataFrame([nueva_fila])], ignore_index=True)
+                
+                # Guardar datos
+                data_manager.save_data()
+        
+        return {
+            'success': True,
+            'migrados': len(consultas_migradas),
+            'errores': errores,
+            'total_usd': round(total_usd, 2)
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'migrados': 0,
+            'errores': 0,
+            'total_usd': 0
+        }
 
 def show_dashboard(data_manager, benchmarks):
     """Mostrar dashboard principal"""
