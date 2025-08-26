@@ -15,4 +15,4 @@ pip install -r requirements.txt
 streamlit run app.py
 
 Autor
-Juan Manuel de la Corte - Resistencia, Chaco, Argentina
+Juan Manuel De La Corte - Resistencia, Chaco, Argentina
