@@ -1,3 +1,4 @@
+# 1 - imports
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -10,7 +11,7 @@ import hashlib
 from typing import Dict, List, Tuple
 import numpy as np
 
-# Configuración de la página
+# 2 - Configuración de la página
 st.set_page_config(
     page_title="Gestión de Consultorios Odontológicos v2.0",
     page_icon="🦷",
@@ -18,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS personalizado
+# 3 - CSS personalizado
 st.markdown("""
 <style>
     .main-header {
@@ -59,6 +60,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 4 - UserManager
 class UserManager:
     """Maneja autenticación y usuarios del sistema"""
     
@@ -155,346 +157,7 @@ class UserManager:
             with open(data_file, 'w', encoding='utf-8') as f:
                 json.dump(initial_data, f, ensure_ascii=False, indent=2, default=str)
 
-def show_login():
-    """Pantalla de login"""
-    st.title("🦷 Sistema de Gestión de Consultorios Odontológicos - Login")
-    
-    with st.expander("ℹ️ Usuarios de Demo"):
-        st.markdown("""
-        **Usuarios de prueba disponibles:**
-        
-        1. **Usuario**: `admin` | **Contraseña**: `admin123`
-        2. **Usuario**: `demo1` | **Contraseña**: `demo123`  
-        3. **Usuario**: `demo2` | **Contraseña**: `demo123`
-        
-        Cada usuario tiene sus propios datos completamente separados.
-        """)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        with st.form("login_form"):
-            st.write("📋 Ingresar al Sistema")
-            
-            username = st.text_input("👤 Usuario", placeholder="Ingrese su usuario")
-            password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingrese su contraseña")
-            
-            login_button = st.form_submit_button("🚀 Ingresar", use_container_width=True)
-            
-            if login_button:
-                if username and password:
-                    user_manager = UserManager()
-                    is_valid, message = user_manager.validate_user(username, password)
-                    
-                    if is_valid:
-                        st.session_state.authenticated = True
-                        st.session_state.user_id = username
-                        st.session_state.user_info = user_manager.get_user_info(username)
-                        
-                        st.success(f"✅ {message}")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ {message}")
-                else:
-                    st.warning("⚠️ Por favor complete todos los campos")
-
-def show_benchmarks(data_manager, benchmarks):
-    """Mostrar benchmarks oficiales"""
-    st.subheader("📊 Benchmarks Oficiales")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("📋 Versión", benchmarks['version'])
-        st.metric("💱 Dólar Referencia", f"${benchmarks['dolar_referencia']} ARS")
-    
-    with col2:
-        st.metric("📅 Actualizado", benchmarks['fecha_actualizacion'])
-        st.metric("🌍 Su Región", data_manager.config['region'])
-    
-    with col3:
-        st.metric("📊 Factor Regional", f"{data_manager.config['factor_regional']:.2f}")
-        ajuste_porcentual = (data_manager.config['factor_regional'] - 1) * 100
-        st.metric("📈 Ajuste", f"{ajuste_porcentual:+.0f}%")
-    
-    st.subheader("💰 Precios de Referencia Ajustados")
-    
-    precios_data = []
-    for tratamiento, precio_base in benchmarks['precios_base_ars'].items():
-        precio_regional = precio_base * data_manager.config['factor_regional']
-        precio_usd = precio_regional / benchmarks['dolar_referencia']
-        
-        precios_data.append({
-            'Tratamiento': tratamiento.replace('_', ' ').title(),
-            'Precio Base (ARS)': f"${precio_base:,.0f}",
-            'Precio Regional (ARS)': f"${precio_regional:,.0f}",
-            'Precio (USD)': f"${precio_usd:.2f}"
-        })
-    
-    df_precios = pd.DataFrame(precios_data)
-    st.dataframe(df_precios, use_container_width=True)
-    
-    if not data_manager.consultas.empty:
-        st.subheader("📈 Análisis de Su Práctica")
-        
-        resumen = data_manager.get_resumen()
-        precio_consulta_benchmark = (benchmarks['precios_base_ars']['consulta'] * 
-                                   data_manager.config['factor_regional'] / 
-                                   benchmarks['dolar_referencia'])
-        
-        diferencia = ((resumen['promedio_consulta'] / precio_consulta_benchmark - 1) * 100)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.metric("📊 Su Promedio", f"${resumen['promedio_consulta']} USD")
-            st.metric("🎯 Benchmark", f"${precio_consulta_benchmark:.2f} USD")
-        
-        with col2:
-            if diferencia < -15:
-                st.error(f"🚨 Sus precios están {abs(diferencia):.1f}% por debajo del sector")
-            elif diferencia < -5:
-                st.warning(f"⚠️ Oportunidad de ajuste: {abs(diferencia):.1f}%")
-            elif diferencia > 30:
-                st.info(f"📈 Precios por encima del promedio: +{diferencia:.1f}%")
-            else:
-                st.success(f"✅ Precios competitivos: {diferencia:+.1f}%")
-
-def show_configuracion(data_manager, benchmarks):
-    """Configuración del sistema"""
-    st.subheader("⚙️ Configuración del Sistema")
-    
-    with st.form("configuracion"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write("💼 Configuración Profesional")
-            
-            nuevo_costo = st.number_input(
-                "💰 Costo por Hora (USD)",
-                min_value=1.0,
-                value=data_manager.config['costo_por_hora'],
-                step=0.50
-            )
-            
-            nuevo_margen = st.slider(
-                "📊 Margen de Ganancia (%)",
-                min_value=10,
-                max_value=100,
-                value=int(data_manager.config['margen_ganancia'] * 100),
-                step=5
-            ) / 100
-            
-            nuevas_horas = st.number_input(
-                "⏰ Horas Anuales de Trabajo",
-                min_value=100,
-                value=data_manager.config['horas_anuales'],
-                step=10
-            )
-        
-        with col2:
-            st.write("🌍 Configuración Regional")
-            
-            nueva_region = st.selectbox(
-                "📍 Su Región",
-                list(benchmarks['ajustes_regionales'].keys()),
-                index=list(benchmarks['ajustes_regionales'].keys()).index(data_manager.config['region'])
-            )
-            
-            nuevo_cambio = st.number_input(
-                "💱 Tipo de Cambio ARS/USD",
-                min_value=1.0,
-                value=float(data_manager.config['tipo_cambio']),
-                step=10.0
-            )
-            
-            factor_auto = benchmarks['ajustes_regionales'][nueva_region]
-            st.info(f"📊 Factor regional automático: {factor_auto} ({(factor_auto-1)*100:+.0f}%)")
-        
-        guardar = st.form_submit_button("💾 Guardar Configuración", type="primary")
-        
-        if guardar:
-            data_manager.config.update({
-                'costo_por_hora': nuevo_costo,
-                'margen_ganancia': nuevo_margen,
-                'horas_anuales': nuevas_horas,
-                'region': nueva_region,
-                'factor_regional': benchmarks['ajustes_regionales'][nueva_region],
-                'tipo_cambio': nuevo_cambio
-            })
-            
-            if data_manager.save_data():
-                st.success("✅ Configuración guardada exitosamente")
-                st.rerun()
-            else:
-                st.error("❌ Error al guardar configuración")
-
-def show_reportes(data_manager):
-    """Mostrar reportes detallados"""
-    st.subheader("📈 Reportes Detallados")
-    
-    if data_manager.consultas.empty:
-        st.info("📝 No hay datos suficientes para generar reportes. Agregue algunas consultas primero.")
-        return
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fecha_inicio = st.date_input("📅 Fecha Inicio", value=date.today().replace(day=1))
-    
-    with col2:
-        fecha_fin = st.date_input("📅 Fecha Fin", value=date.today())
-    
-    df_filtrado = data_manager.consultas.copy()
-    df_filtrado['fecha'] = pd.to_datetime(df_filtrado['fecha'])
-    df_filtrado = df_filtrado[
-        (df_filtrado['fecha'].dt.date >= fecha_inicio) & 
-        (df_filtrado['fecha'].dt.date <= fecha_fin)
-    ]
-    
-    if df_filtrado.empty:
-        st.warning("⚠️ No hay datos en el rango de fechas seleccionado")
-        return
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("👥 Consultas", len(df_filtrado))
-    
-    with col2:
-        ingresos_periodo = df_filtrado['monto_usd'].sum()
-        st.metric("💰 Ingresos", f"${ingresos_periodo:.2f} USD")
-    
-    with col3:
-        promedio_periodo = df_filtrado['monto_usd'].mean()
-        st.metric("📊 Promedio", f"${promedio_periodo:.2f} USD")
-    
-    with col4:
-        dias_periodo = (fecha_fin - fecha_inicio).days + 1
-        consultas_por_dia = len(df_filtrado) / dias_periodo
-        st.metric("📅 Consultas/Día", f"{consultas_por_dia:.1f}")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📈 Evolución Diaria")
-        
-        df_diario = df_filtrado.groupby(df_filtrado['fecha'].dt.date).agg({
-            'monto_usd': 'sum',
-            'paciente': 'count'
-        }).reset_index()
-        df_diario.columns = ['fecha', 'ingresos', 'consultas']
-        
-        fig_daily = go.Figure()
-        fig_daily.add_trace(go.Scatter(
-            x=df_diario['fecha'],
-            y=df_diario['ingresos'],
-            mode='lines+markers',
-            name='Ingresos USD',
-            line=dict(color='#3b82f6')
-        ))
-        
-        fig_daily.update_layout(
-            title="Ingresos Diarios",
-            xaxis_title="Fecha",
-            yaxis_title="Ingresos (USD)"
-        )
-        st.plotly_chart(fig_daily, use_container_width=True)
-    
-    with col2:
-        st.subheader("💳 Medios de Pago")
-        
-        medios_pago = df_filtrado.groupby('medio_pago')['monto_usd'].sum()
-        
-        fig_payment = px.pie(
-            values=medios_pago.values,
-            names=medios_pago.index,
-            title="Distribución por Medio de Pago"
-        )
-        st.plotly_chart(fig_payment, use_container_width=True)
-    
-    st.subheader("📋 Detalle de Consultas")
-    
-    df_display = df_filtrado.copy()
-    df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y %H:%M')
-    df_display = df_display[['fecha', 'paciente', 'tratamiento', 'monto_ars', 'monto_usd', 'medio_pago']]
-    df_display.columns = ['Fecha', 'Paciente', 'Tratamiento', 'Monto ARS', 'Monto USD', 'Medio Pago']
-    
-    df_display['Monto ARS'] = df_display['Monto ARS'].apply(lambda x: f"${x:,.0f}")
-    df_display['Monto USD'] = df_display['Monto USD'].apply(lambda x: f"${x:.2f}")
-    
-    st.dataframe(df_display, use_container_width=True)
-    
-    if st.button("📥 Exportar Reporte a CSV"):
-        csv = df_display.to_csv(index=False, encoding='utf-8-sig')
-        st.download_button(
-            label="💾 Descargar CSV",
-            data=csv,
-            file_name=f"reporte_dental_{fecha_inicio}_{fecha_fin}.csv",
-            mime="text/csv"
-        )
-
-def main():
-    if 'authenticated' not in st.session_state or not st.session_state.authenticated:
-        show_login()
-        return
-    
-    user_id = st.session_state.user_id
-    user_info = st.session_state.user_info
-    
-    col1, col2, col3 = st.columns([3, 1, 1])
-    
-    with col1:
-        st.markdown('<h1 class="main-header">🦷 Sistema de Gestión de Consultorios Odontológicos v2.0</h1>', unsafe_allow_html=True)
-    
-    with col2:
-        st.write(f"👤 {user_info.get('nombre', user_id)}")
-    
-    with col3:
-        if st.button("🚪 Cerrar Sesión"):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
-    
-    if 'data_manager' not in st.session_state:
-        st.session_state.data_manager = DataManager(user_id=user_id)
-    
-    data_manager = st.session_state.data_manager
-    benchmarks = BenchmarksManager.get_benchmarks_config()
-    
-    with st.sidebar:
-        st.image("https://via.placeholder.com/200x100/3b82f6/ffffff?text=Dental+v2.0", width=200)
-        
-        menu = st.selectbox(
-            "📋 Menú Principal",
-            ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Calculadora de Precios", 
-             "📊 Benchmarks", "⚙️ Configuración", "📈 Reportes", "📥 Migrar Datos"]
-        )
-        
-        st.markdown("---")
-        
-        resumen = data_manager.get_resumen()
-        st.metric("💰 Ingresos Totales", f"${resumen['ingreso_total']} USD")
-        st.metric("👥 Consultas", resumen['total_consultas'])
-        st.metric("📊 Promedio", f"${resumen['promedio_consulta']} USD")
-    
-    if menu == "🏠 Dashboard":
-        show_dashboard(data_manager, benchmarks, user_info)
-    elif menu == "➕ Nueva Consulta":
-        show_nueva_consulta(data_manager)
-    elif menu == "💰 Calculadora de Precios":
-        show_calculadora_precios(data_manager)
-    elif menu == "📊 Benchmarks":
-        show_benchmarks(data_manager, benchmarks)
-    elif menu == "⚙️ Configuración":
-        show_configuracion(data_manager, benchmarks)
-    elif menu == "📈 Reportes":
-        show_reportes(data_manager)
-    elif menu == "📥 Migrar Datos":
-        show_migration_tool(data_manager)
-
-if __name__ == "__main__":
-    main()
+# 5 - Benchmarks manager
 
 class BenchmarksManager:
     """Manejo de benchmarks oficiales"""
@@ -545,6 +208,8 @@ class BenchmarksManager:
             }
         }
 
+
+# 6 - DataManager
 class DataManager:
     """Manejo de datos del consultorio - Versión Multi-Usuario"""
     
@@ -655,7 +320,7 @@ class DataManager:
             'tratamiento_popular': tratamiento_popular,
             'ingresos_mes': round(ingresos_mes, 2)
         }
-
+# 7 - Funciones aux
 def calculate_price_optimized(time_hours: float, materials_usd: float, cost_per_hour: float, margin: float = 0.40):
     """Calcular precio optimizado"""
     if time_hours <= 0 or materials_usd < 0:
@@ -1079,3 +744,349 @@ def show_calculadora_precios(data_manager):
         
         precio_ars = resultado['precio_final'] * data_manager.config['tipo_cambio']
         st.info(f"💱 Precio en ARS: ${precio_ars:,.0f}")
+# 8 - Funciones Show
+def show_benchmarks(data_manager, benchmarks):
+    """Mostrar benchmarks oficiales"""
+    st.subheader("📊 Benchmarks Oficiales")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("📋 Versión", benchmarks['version'])
+        st.metric("💱 Dólar Referencia", f"${benchmarks['dolar_referencia']} ARS")
+    
+    with col2:
+        st.metric("📅 Actualizado", benchmarks['fecha_actualizacion'])
+        st.metric("🌍 Su Región", data_manager.config['region'])
+    
+    with col3:
+        st.metric("📊 Factor Regional", f"{data_manager.config['factor_regional']:.2f}")
+        ajuste_porcentual = (data_manager.config['factor_regional'] - 1) * 100
+        st.metric("📈 Ajuste", f"{ajuste_porcentual:+.0f}%")
+    
+    st.subheader("💰 Precios de Referencia Ajustados")
+    
+    precios_data = []
+    for tratamiento, precio_base in benchmarks['precios_base_ars'].items():
+        precio_regional = precio_base * data_manager.config['factor_regional']
+        precio_usd = precio_regional / benchmarks['dolar_referencia']
+        
+        precios_data.append({
+            'Tratamiento': tratamiento.replace('_', ' ').title(),
+            'Precio Base (ARS)': f"${precio_base:,.0f}",
+            'Precio Regional (ARS)': f"${precio_regional:,.0f}",
+            'Precio (USD)': f"${precio_usd:.2f}"
+        })
+    
+    df_precios = pd.DataFrame(precios_data)
+    st.dataframe(df_precios, use_container_width=True)
+    
+    if not data_manager.consultas.empty:
+        st.subheader("📈 Análisis de Su Práctica")
+        
+        resumen = data_manager.get_resumen()
+        precio_consulta_benchmark = (benchmarks['precios_base_ars']['consulta'] * 
+                                   data_manager.config['factor_regional'] / 
+                                   benchmarks['dolar_referencia'])
+        
+        diferencia = ((resumen['promedio_consulta'] / precio_consulta_benchmark - 1) * 100)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("📊 Su Promedio", f"${resumen['promedio_consulta']} USD")
+            st.metric("🎯 Benchmark", f"${precio_consulta_benchmark:.2f} USD")
+        
+        with col2:
+            if diferencia < -15:
+                st.error(f"🚨 Sus precios están {abs(diferencia):.1f}% por debajo del sector")
+            elif diferencia < -5:
+                st.warning(f"⚠️ Oportunidad de ajuste: {abs(diferencia):.1f}%")
+            elif diferencia > 30:
+                st.info(f"📈 Precios por encima del promedio: +{diferencia:.1f}%")
+            else:
+                st.success(f"✅ Precios competitivos: {diferencia:+.1f}%")
+
+def show_configuracion(data_manager, benchmarks):
+    """Configuración del sistema"""
+    st.subheader("⚙️ Configuración del Sistema")
+    
+    with st.form("configuracion"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("💼 Configuración Profesional")
+            
+            nuevo_costo = st.number_input(
+                "💰 Costo por Hora (USD)",
+                min_value=1.0,
+                value=data_manager.config['costo_por_hora'],
+                step=0.50
+            )
+            
+            nuevo_margen = st.slider(
+                "📊 Margen de Ganancia (%)",
+                min_value=10,
+                max_value=100,
+                value=int(data_manager.config['margen_ganancia'] * 100),
+                step=5
+            ) / 100
+            
+            nuevas_horas = st.number_input(
+                "⏰ Horas Anuales de Trabajo",
+                min_value=100,
+                value=data_manager.config['horas_anuales'],
+                step=10
+            )
+        
+        with col2:
+            st.write("🌍 Configuración Regional")
+            
+            nueva_region = st.selectbox(
+                "📍 Su Región",
+                list(benchmarks['ajustes_regionales'].keys()),
+                index=list(benchmarks['ajustes_regionales'].keys()).index(data_manager.config['region'])
+            )
+            
+            nuevo_cambio = st.number_input(
+                "💱 Tipo de Cambio ARS/USD",
+                min_value=1.0,
+                value=float(data_manager.config['tipo_cambio']),
+                step=10.0
+            )
+            
+            factor_auto = benchmarks['ajustes_regionales'][nueva_region]
+            st.info(f"📊 Factor regional automático: {factor_auto} ({(factor_auto-1)*100:+.0f}%)")
+        
+        guardar = st.form_submit_button("💾 Guardar Configuración", type="primary")
+        
+        if guardar:
+            data_manager.config.update({
+                'costo_por_hora': nuevo_costo,
+                'margen_ganancia': nuevo_margen,
+                'horas_anuales': nuevas_horas,
+                'region': nueva_region,
+                'factor_regional': benchmarks['ajustes_regionales'][nueva_region],
+                'tipo_cambio': nuevo_cambio
+            })
+            
+            if data_manager.save_data():
+                st.success("✅ Configuración guardada exitosamente")
+                st.rerun()
+            else:
+                st.error("❌ Error al guardar configuración")
+
+def show_reportes(data_manager):
+    """Mostrar reportes detallados"""
+    st.subheader("📈 Reportes Detallados")
+    
+    if data_manager.consultas.empty:
+        st.info("📝 No hay datos suficientes para generar reportes. Agregue algunas consultas primero.")
+        return
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        fecha_inicio = st.date_input("📅 Fecha Inicio", value=date.today().replace(day=1))
+    
+    with col2:
+        fecha_fin = st.date_input("📅 Fecha Fin", value=date.today())
+    
+    df_filtrado = data_manager.consultas.copy()
+    df_filtrado['fecha'] = pd.to_datetime(df_filtrado['fecha'])
+    df_filtrado = df_filtrado[
+        (df_filtrado['fecha'].dt.date >= fecha_inicio) & 
+        (df_filtrado['fecha'].dt.date <= fecha_fin)
+    ]
+    
+    if df_filtrado.empty:
+        st.warning("⚠️ No hay datos en el rango de fechas seleccionado")
+        return
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("👥 Consultas", len(df_filtrado))
+    
+    with col2:
+        ingresos_periodo = df_filtrado['monto_usd'].sum()
+        st.metric("💰 Ingresos", f"${ingresos_periodo:.2f} USD")
+    
+    with col3:
+        promedio_periodo = df_filtrado['monto_usd'].mean()
+        st.metric("📊 Promedio", f"${promedio_periodo:.2f} USD")
+    
+    with col4:
+        dias_periodo = (fecha_fin - fecha_inicio).days + 1
+        consultas_por_dia = len(df_filtrado) / dias_periodo
+        st.metric("📅 Consultas/Día", f"{consultas_por_dia:.1f}")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📈 Evolución Diaria")
+        
+        df_diario = df_filtrado.groupby(df_filtrado['fecha'].dt.date).agg({
+            'monto_usd': 'sum',
+            'paciente': 'count'
+        }).reset_index()
+        df_diario.columns = ['fecha', 'ingresos', 'consultas']
+        
+        fig_daily = go.Figure()
+        fig_daily.add_trace(go.Scatter(
+            x=df_diario['fecha'],
+            y=df_diario['ingresos'],
+            mode='lines+markers',
+            name='Ingresos USD',
+            line=dict(color='#3b82f6')
+        ))
+        
+        fig_daily.update_layout(
+            title="Ingresos Diarios",
+            xaxis_title="Fecha",
+            yaxis_title="Ingresos (USD)"
+        )
+        st.plotly_chart(fig_daily, use_container_width=True)
+    
+    with col2:
+        st.subheader("💳 Medios de Pago")
+        
+        medios_pago = df_filtrado.groupby('medio_pago')['monto_usd'].sum()
+        
+        fig_payment = px.pie(
+            values=medios_pago.values,
+            names=medios_pago.index,
+            title="Distribución por Medio de Pago"
+        )
+        st.plotly_chart(fig_payment, use_container_width=True)
+    
+    st.subheader("📋 Detalle de Consultas")
+    
+    df_display = df_filtrado.copy()
+    df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y %H:%M')
+    df_display = df_display[['fecha', 'paciente', 'tratamiento', 'monto_ars', 'monto_usd', 'medio_pago']]
+    df_display.columns = ['Fecha', 'Paciente', 'Tratamiento', 'Monto ARS', 'Monto USD', 'Medio Pago']
+    
+    df_display['Monto ARS'] = df_display['Monto ARS'].apply(lambda x: f"${x:,.0f}")
+    df_display['Monto USD'] = df_display['Monto USD'].apply(lambda x: f"${x:.2f}")
+    
+    st.dataframe(df_display, use_container_width=True)
+    
+    if st.button("📥 Exportar Reporte a CSV"):
+        csv = df_display.to_csv(index=False, encoding='utf-8-sig')
+        st.download_button(
+            label="💾 Descargar CSV",
+            data=csv,
+            file_name=f"reporte_dental_{fecha_inicio}_{fecha_fin}.csv",
+            mime="text/csv"
+        )
+# 9 - show_login()
+def show_login():
+    """Pantalla de login"""
+    st.title("🦷 Sistema de Gestión de Consultorios Odontológicos - Login")
+    
+    with st.expander("ℹ️ Usuarios de Demo"):
+        st.markdown("""
+        **Usuarios de prueba disponibles:**
+        
+        1. **Usuario**: `admin` | **Contraseña**: `admin123`
+        2. **Usuario**: `demo1` | **Contraseña**: `demo123`  
+        3. **Usuario**: `demo2` | **Contraseña**: `demo123`
+        
+        Cada usuario tiene sus propios datos completamente separados.
+        """)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.form("login_form"):
+            st.write("📋 Ingresar al Sistema")
+            
+            username = st.text_input("👤 Usuario", placeholder="Ingrese su usuario")
+            password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingrese su contraseña")
+            
+            login_button = st.form_submit_button("🚀 Ingresar", use_container_width=True)
+            
+            if login_button:
+                if username and password:
+                    user_manager = UserManager()
+                    is_valid, message = user_manager.validate_user(username, password)
+                    
+                    if is_valid:
+                        st.session_state.authenticated = True
+                        st.session_state.user_id = username
+                        st.session_state.user_info = user_manager.get_user_info(username)
+                        
+                        st.success(f"✅ {message}")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {message}")
+                else:
+                    st.warning("⚠️ Por favor complete todos los campos")
+
+# 10 - main
+def main():
+    if 'authenticated' not in st.session_state or not st.session_state.authenticated:
+        show_login()
+        return
+    
+    user_id = st.session_state.user_id
+    user_info = st.session_state.user_info
+    
+    col1, col2, col3 = st.columns([3, 1, 1])
+    
+    with col1:
+        st.markdown('<h1 class="main-header">🦷 Sistema de Gestión de Consultorios Odontológicos v2.0</h1>', unsafe_allow_html=True)
+    
+    with col2:
+        st.write(f"👤 {user_info.get('nombre', user_id)}")
+    
+    with col3:
+        if st.button("🚪 Cerrar Sesión"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+    
+    if 'data_manager' not in st.session_state:
+        st.session_state.data_manager = DataManager(user_id=user_id)
+    
+    data_manager = st.session_state.data_manager
+    benchmarks = BenchmarksManager.get_benchmarks_config()
+    
+    with st.sidebar:
+        st.image("https://via.placeholder.com/200x100/3b82f6/ffffff?text=Dental+v2.0", width=200)
+        
+        menu = st.selectbox(
+            "📋 Menú Principal",
+            ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Calculadora de Precios", 
+             "📊 Benchmarks", "⚙️ Configuración", "📈 Reportes", "📥 Migrar Datos"]
+        )
+        
+        st.markdown("---")
+        
+        resumen = data_manager.get_resumen()
+        st.metric("💰 Ingresos Totales", f"${resumen['ingreso_total']} USD")
+        st.metric("👥 Consultas", resumen['total_consultas'])
+        st.metric("📊 Promedio", f"${resumen['promedio_consulta']} USD")
+    
+    if menu == "🏠 Dashboard":
+        show_dashboard(data_manager, benchmarks, user_info)
+    elif menu == "➕ Nueva Consulta":
+        show_nueva_consulta(data_manager)
+    elif menu == "💰 Calculadora de Precios":
+        show_calculadora_precios(data_manager)
+    elif menu == "📊 Benchmarks":
+        show_benchmarks(data_manager, benchmarks)
+    elif menu == "⚙️ Configuración":
+        show_configuracion(data_manager, benchmarks)
+    elif menu == "📈 Reportes":
+        show_reportes(data_manager)
+    elif menu == "📥 Migrar Datos":
+        show_migration_tool(data_manager)
+
+# 11 - if__name__== "__main__"
+if __name__ == "__main__":
+    main()
+
+
+
