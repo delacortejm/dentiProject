@@ -980,30 +980,56 @@ def show_reportes(data_manager):
             file_name=f"reporte_dental_{fecha_inicio}_{fecha_fin}.csv",
             mime="text/csv"
         )
-# 9 - show_login()
+# 9 - show_login() MEJORADA - SIN CREDENCIALES VISIBLES
 def show_login():
-    """Pantalla de login"""
+    """Pantalla de login segura"""
     st.title("🦷 Sistema de Gestión de Consultorios Odontológicos - Login")
     
-    with st.expander("ℹ️ Usuarios de Demo"):
+    # Solo mostrar información básica, NO las credenciales
+    with st.expander("ℹ️ Información del Sistema"):
         st.markdown("""
-        **Usuarios de prueba disponibles:**
+        **Sistema de Gestión Dental v2.0**
         
-        1. **Usuario**: `admin` | **Contraseña**: `admin123`
-        2. **Usuario**: `demo1` | **Contraseña**: `demo123`  
-        3. **Usuario**: `demo2` | **Contraseña**: `demo123`
+        ✨ **Características:**
+        - Dashboard con métricas en tiempo real
+        - Gestión de consultas y pacientes
+        - Calculadora de precios profesional
+        - Benchmarks del sector odontológico
+        - Reportes detallados y exportación
+        - Sistema multi-usuario con datos separados
         
-        Cada usuario tiene sus propios datos completamente separados.
+        🔐 **Acceso:**
+        - Cada usuario tiene sus propios datos privados
+        - Sistema de autenticación seguro
+        - Datos completamente separados entre usuarios
+        
+        📞 **Soporte:**
+        - Para obtener credenciales de acceso, contacte al administrador
+        - Demo disponible para evaluación
         """)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         with st.form("login_form"):
-            st.write("📋 Ingresar al Sistema")
+            st.write("🔋 Ingresar al Sistema")
             
             username = st.text_input("👤 Usuario", placeholder="Ingrese su usuario")
             password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingrese su contraseña")
+            
+            # Checkbox para mostrar hint de demo (opcional)
+            show_demo_hint = st.checkbox("🎯 Mostrar usuarios de demo")
+            
+            if show_demo_hint:
+                st.info("""
+                **Usuarios de prueba disponibles:**
+                
+                👨‍⚕️ **Administrador**: `admin` / `admin123`
+                👩‍⚕️ **Demo 1**: `demo1` / `demo123`  
+                🦷 **Demo 2**: `demo2` / `demo123`
+                
+                ⚠️ Solo para evaluación del sistema
+                """)
             
             login_button = st.form_submit_button("🚀 Ingresar", use_container_width=True)
             
@@ -1021,8 +1047,22 @@ def show_login():
                         st.rerun()
                     else:
                         st.error(f"❌ {message}")
+                        # Hint sutil para usuarios que tienen problemas
+                        if "Usuario no encontrado" in message:
+                            st.info("💡 Tip: Verifique el nombre de usuario. Para demo, active el checkbox superior.")
                 else:
                     st.warning("⚠️ Por favor complete todos los campos")
+    
+    # Footer con información de contacto (sin credenciales)
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style='text-align: center; color: #666; font-size: 0.8em;'>
+        📧 ¿Necesita acceso? Contacte al administrador del sistema<br>
+        🔒 Sistema seguro - Datos protegidos y privados
+        </div>
+        """, unsafe_allow_html=True)
 
 # 10 - main
 def main():
