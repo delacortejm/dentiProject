@@ -1113,17 +1113,17 @@ def main():
         st.metric("Consultas", resumen['total_consultas'])
         st.metric("Promedio", f"${resumen['promedio_consulta']:,.0f} ARS")
     
-    if menu == "Dashboard":
+    if menu == "🏠 Dashboard":
         show_dashboard(data_manager, user_info)
-    elif menu == "Nueva Consulta":
+    elif menu == "➕ Nueva Consulta":
         show_nueva_consulta(data_manager)
-    elif menu == "Calculadora de Precios":
+    elif menu == "💰 Calculadora de Precios":
         show_calculadora_precios(data_manager)
-    elif menu == "Configuración":
+    elif menu == "⚙️ Configuración":
         show_configuracion(data_manager)
-    elif menu == "Reportes":
+    elif menu == "⚙️ Reportes":
         show_reportes(data_manager)
-    elif menu == "Migrar Datos":
+    elif menu == "📥 Migrar Datos":
         show_migration_tool(data_manager)
 
 if __name__ == "__main__":
