@@ -1102,8 +1102,8 @@ def main():
         
         menu = st.selectbox(
             "Menú Principal",
-            ["Dashboard", "Nueva Consulta", "Calculadora de Precios", 
-             "Configuración", "Reportes", "Migrar Datos"]
+            ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Calculadora de Precios", 
+     "⚙️ Configuración", "📈 Reportes", "📥 Migrar Datos"]
         )
         
         st.markdown("---")
