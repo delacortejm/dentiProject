@@ -144,8 +144,7 @@ class UserManager:
             initial_data = {
                 'consultas': [],
                 'config': {
-                    'costo_por_hora': 21.68,
-                    'tipo_cambio': 1335,
+                    'costo_por_hora': 29000,  # En pesos
                     'margen_ganancia': 0.40,
                     'region': 'Interior NOA/NEA'
                 }
@@ -157,7 +156,7 @@ class UserManager:
 
 # 5 - DataManager
 class DataManager:
-    """Manejo de datos del consultorio - Versión Multi-Usuario"""
+    """Manejo de datos del consultorio - Solo pesos argentinos"""
     
     def __init__(self, user_id=None):
         if user_id:
@@ -181,14 +180,13 @@ class DataManager:
     
     def init_default_data(self):
         self.consultas = pd.DataFrame(columns=[
-            'fecha', 'paciente', 'tratamiento', 'monto_ars', 'monto_usd', 'medio_pago'
+            'fecha', 'paciente', 'tratamiento', 'monto_ars', 'medio_pago'
         ])
         self.config = self.get_default_config()
     
     def get_default_config(self):
         return {
-            'costo_por_hora': 21.68,
-            'tipo_cambio': 1335,
+            'costo_por_hora': 29000,  # En pesos
             'margen_ganancia': 0.40,
             'region': 'Interior NOA/NEA'
         }
@@ -209,13 +207,11 @@ class DataManager:
             return False
     
     def add_consulta(self, paciente, tratamiento, monto_ars, medio_pago):
-        monto_usd = monto_ars / self.config['tipo_cambio']
         nueva_consulta = {
             'fecha': datetime.now().isoformat(),
             'paciente': paciente,
             'tratamiento': tratamiento,
             'monto_ars': monto_ars,
-            'monto_usd': round(monto_usd, 2),
             'medio_pago': medio_pago
         }
         
@@ -241,7 +237,7 @@ class DataManager:
             self.consultas['fecha'] = pd.to_datetime(self.consultas['fecha'])
         
         total_consultas = len(self.consultas)
-        ingreso_total = self.consultas['monto_usd'].sum()
+        ingreso_total = self.consultas['monto_ars'].sum()
         promedio_consulta = ingreso_total / total_consultas if total_consultas > 0 else 0
         
         tratamiento_popular = 'N/A'
@@ -255,47 +251,47 @@ class DataManager:
             (self.consultas['fecha'].dt.month == fecha_actual.month) &
             (self.consultas['fecha'].dt.year == fecha_actual.year)
         ]
-        ingresos_mes = mes_actual['monto_usd'].sum() if not mes_actual.empty else 0
+        ingresos_mes = mes_actual['monto_ars'].sum() if not mes_actual.empty else 0
         
         return {
             'total_consultas': total_consultas,
-            'ingreso_total': round(ingreso_total, 2),
-            'promedio_consulta': round(promedio_consulta, 2),
+            'ingreso_total': round(ingreso_total, 0),
+            'promedio_consulta': round(promedio_consulta, 0),
             'tratamiento_popular': tratamiento_popular,
-            'ingresos_mes': round(ingresos_mes, 2)
+            'ingresos_mes': round(ingresos_mes, 0)
         }
 
 # 6 - Funciones auxiliares
-def calculate_price_optimized(time_hours: float, materials_usd: float, cost_per_hour: float, margin: float = 0.40):
-    """Calcular precio optimizado"""
-    if time_hours <= 0 or materials_usd < 0:
+def calculate_price_optimized(time_hours: float, materials_ars: float, cost_per_hour: float, margin: float = 0.40):
+    """Calcular precio optimizado en pesos"""
+    if time_hours <= 0 or materials_ars < 0:
         raise ValueError("Horas debe ser > 0 y materiales >= 0")
     
     labor_cost = time_hours * cost_per_hour
-    total_cost = labor_cost + materials_usd
+    total_cost = labor_cost + materials_ars
     final_price = total_cost * (1 + margin)
     
     return {
         'time_hours': time_hours,
         'cost_per_hour': cost_per_hour,
-        'mano_obra': round(labor_cost, 2),
-        'materiales': materials_usd,
-        'costo_total': round(total_cost, 2),
-        'precio_final': round(final_price),
+        'mano_obra': round(labor_cost, 0),
+        'materiales': materials_ars,
+        'costo_total': round(total_cost, 0),
+        'precio_final': round(final_price, 0),
         'margen': margin * 100
     }
 
 def extraer_monto_numerico(monto_str):
-    """Extrae valor numérico de string de monto - Mejorada"""
+    """Extrae valor numérico de string de monto"""
     try:
         if pd.isna(monto_str):
             return 0
         
         monto_clean = str(monto_str).strip()
         
-        # Remover símbolos comunes de moneda y separadores
-        monto_clean = re.sub(r'[$€£¥₹₽₩¢]', '', monto_clean)  # Símbolos de moneda
-        monto_clean = re.sub(r'[^\d.,\-]', '', monto_clean)    # Solo números, comas, puntos y minus
+        # Remover símbolos comunes de moneda
+        monto_clean = re.sub(r'[$€£¥₹₽₩¢]', '', monto_clean)
+        monto_clean = re.sub(r'[^\d.,\-]', '', monto_clean)
         
         if not monto_clean:
             return 0
@@ -306,20 +302,14 @@ def extraer_monto_numerico(monto_str):
         
         # Determinar si el último punto/coma son decimales
         if ',' in monto_clean and '.' in monto_clean:
-            # Ambos presentes - el último es decimal
             if monto_clean.rfind(',') > monto_clean.rfind('.'):
-                # Coma es decimal: 1.234.567,89
                 monto_clean = monto_clean.replace('.', '').replace(',', '.')
             else:
-                # Punto es decimal: 1,234,567.89
                 monto_clean = monto_clean.replace(',', '')
         elif ',' in monto_clean:
-            # Solo comas - podría ser decimal o separador de miles
             if monto_clean.count(',') == 1 and len(monto_clean.split(',')[1]) <= 2:
-                # Probablemente decimal: 1234,56
                 monto_clean = monto_clean.replace(',', '.')
             else:
-                # Separador de miles: 1,234,567
                 monto_clean = monto_clean.replace(',', '')
         
         resultado = float(monto_clean)
@@ -337,32 +327,15 @@ def normalizar_fecha_flexible(fecha_valor):
         
         fecha_str = str(fecha_valor).strip()
         
-        # Lista amplia de formatos de fecha
         formatos_fecha = [
-            # Formatos dd/mm/yyyy
-            '%d/%m/%Y', '%d/%m/%y',
-            '%d-%m-%Y', '%d-%m-%y',
-            '%d.%m.%Y', '%d.%m.%y',
-            
-            # Formatos mm/dd/yyyy
-            '%m/%d/%Y', '%m/%d/%y',
-            '%m-%d-%Y', '%m-%d-%y',
-            
-            # Formatos yyyy-mm-dd (ISO)
-            '%Y-%m-%d', '%Y/%m/%d',
-            '%Y.%m.%d', '%Y_%m_%d',
-            
-            # Con hora
-            '%d/%m/%Y %H:%M:%S', '%d/%m/%Y %H:%M',
-            '%d-%m-%Y %H:%M:%S', '%d-%m-%Y %H:%M',
+            '%d/%m/%Y', '%d/%m/%y', '%d-%m-%Y', '%d-%m-%y', '%d.%m.%Y', '%d.%m.%y',
+            '%m/%d/%Y', '%m/%d/%y', '%m-%d-%Y', '%m-%d-%y',
+            '%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d', '%Y_%m_%d',
+            '%d/%m/%Y %H:%M:%S', '%d/%m/%Y %H:%M', '%d-%m-%Y %H:%M:%S', '%d-%m-%Y %H:%M',
             '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M',
-            
-            # Formatos con texto
-            '%d de %B de %Y', '%d %B %Y',
-            '%B %d, %Y', '%d %b %Y',
+            '%d de %B de %Y', '%d %B %Y', '%B %d, %Y', '%d %b %Y',
         ]
         
-        # Intentar cada formato
         for formato in formatos_fecha:
             try:
                 fecha_parsed = datetime.strptime(fecha_str, formato)
@@ -370,7 +343,6 @@ def normalizar_fecha_flexible(fecha_valor):
             except ValueError:
                 continue
         
-        # Si no funciona ningún formato, usar pandas
         try:
             fecha_pandas = pd.to_datetime(fecha_str, dayfirst=True, errors='coerce')
             if not pd.isna(fecha_pandas):
@@ -378,7 +350,6 @@ def normalizar_fecha_flexible(fecha_valor):
         except:
             pass
         
-        # Último recurso: fecha actual
         st.warning(f"No se pudo procesar fecha '{fecha_valor}', usando fecha actual")
         return datetime.now().isoformat()
         
@@ -396,11 +367,10 @@ def show_migration_tool_flexible(data_manager):
     Esta herramienta puede trabajar con cualquier archivo CSV:
     - ✅ Mapea automáticamente las columnas de tu archivo
     - 🔄 Convierte formatos de fecha y moneda
-    - 🎭 Mantiene los datos tal como están
+    - 💰 Todo en pesos argentinos
     - 📊 Vista previa antes de migrar
     """)
     
-    # 1. SELECCIÓN DE ARCHIVO
     uploaded_file = st.file_uploader(
         "📁 Sube tu archivo CSV", 
         type=['csv'],
@@ -428,7 +398,7 @@ def show_migration_tool_flexible(data_manager):
             
             st.success(f"✅ Archivo cargado correctamente (encoding: {encoding_usado})")
             
-            # 2. VISTA PREVIA DEL ARCHIVO
+            # Vista previa del archivo
             with st.expander("👀 Vista Previa del Archivo", expanded=True):
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -444,7 +414,7 @@ def show_migration_tool_flexible(data_manager):
                 st.markdown("**Columnas disponibles:**")
                 st.write(", ".join(df.columns.tolist()))
             
-            # 3. MAPEO DE COLUMNAS
+            # Mapeo de columnas
             st.subheader("🗺️ Mapeo de Columnas")
             st.markdown("Indica qué columna de tu CSV corresponde a cada campo:")
             
@@ -455,20 +425,17 @@ def show_migration_tool_flexible(data_manager):
                 
                 col_paciente = st.selectbox(
                     "👤 Columna de Pacientes *",
-                    options=['-- Seleccionar --'] + df.columns.tolist(),
-                    help="Columna que contiene los nombres de los pacientes"
+                    options=['-- Seleccionar --'] + df.columns.tolist()
                 )
                 
                 col_tratamiento = st.selectbox(
                     "🦷 Columna de Tratamientos *",
-                    options=['-- Seleccionar --'] + df.columns.tolist(),
-                    help="Columna que describe el tratamiento realizado"
+                    options=['-- Seleccionar --'] + df.columns.tolist()
                 )
                 
                 col_monto = st.selectbox(
-                    "💰 Columna de Montos *",
-                    options=['-- Seleccionar --'] + df.columns.tolist(),
-                    help="Columna con el precio/monto del tratamiento"
+                    "💰 Columna de Montos (ARS) *",
+                    options=['-- Seleccionar --'] + df.columns.tolist()
                 )
             
             with col2:
@@ -476,38 +443,25 @@ def show_migration_tool_flexible(data_manager):
                 
                 col_fecha = st.selectbox(
                     "📅 Columna de Fechas",
-                    options=['-- Usar fecha actual --'] + df.columns.tolist(),
-                    help="Columna con la fecha de la consulta"
+                    options=['-- Usar fecha actual --'] + df.columns.tolist()
                 )
                 
                 col_medio_pago = st.selectbox(
                     "💳 Columna de Medio de Pago",
-                    options=['-- Usar "No especificado" --'] + df.columns.tolist(),
-                    help="Columna que indica cómo se pagó"
-                )
-                
-                # Configuración de moneda
-                st.markdown("**💱 Configuración de Moneda:**")
-                
-                tipo_moneda = st.radio(
-                    "¿En qué moneda están los montos?",
-                    options=["ARS (Pesos Argentinos)", "USD (Dólares)", "Detectar automáticamente"],
-                    help="Indica la moneda de los montos en tu CSV"
+                    options=['-- Usar "No especificado" --'] + df.columns.tolist()
                 )
             
-            # 4. VISTA PREVIA DEL MAPEO
+            # Vista previa del mapeo
             if (col_paciente != '-- Seleccionar --' and 
                 col_tratamiento != '-- Seleccionar --' and 
                 col_monto != '-- Seleccionar --'):
                 
                 st.subheader("👁️ Vista Previa del Mapeo")
                 
-                # Crear muestra de cómo se verán los datos
                 muestra = df.head(5).copy()
-                
                 preview_data = []
+                
                 for _, row in muestra.iterrows():
-                    # Procesar fecha
                     if col_fecha == '-- Usar fecha actual --':
                         fecha_procesada = datetime.now().strftime('%d/%m/%Y')
                     else:
@@ -515,11 +469,9 @@ def show_migration_tool_flexible(data_manager):
                         fecha_iso = normalizar_fecha_flexible(fecha_raw)
                         fecha_procesada = datetime.fromisoformat(fecha_iso).strftime('%d/%m/%Y')
                     
-                    # Procesar monto
                     monto_raw = row[col_monto]
                     monto_procesado = extraer_monto_numerico(monto_raw)
                     
-                    # Procesar medio de pago
                     if col_medio_pago == '-- Usar "No especificado" --':
                         medio_pago = "No especificado"
                     else:
@@ -530,14 +482,14 @@ def show_migration_tool_flexible(data_manager):
                         'Paciente': str(row[col_paciente]),
                         'Tratamiento': str(row[col_tratamiento]),
                         'Monto Original': str(monto_raw),
-                        'Monto Procesado': f"${monto_procesado:,.2f}",
+                        'Monto ARS': f"${monto_procesado:,.0f}",
                         'Medio de Pago': medio_pago
                     })
                 
                 preview_df = pd.DataFrame(preview_data)
                 st.dataframe(preview_df, use_container_width=True)
                 
-                # 5. ESTADÍSTICAS PRE-MIGRACIÓN
+                # Estadísticas pre-migración
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
@@ -549,30 +501,15 @@ def show_migration_tool_flexible(data_manager):
                     st.metric("🦷 Tipos de Tratamiento", tratamientos_unicos)
                 
                 with col3:
-                    # Calcular total estimado
                     montos_procesados = df[col_monto].apply(extraer_monto_numerico)
                     total_estimado = montos_procesados.sum()
-                    
-                    if tipo_moneda == "ARS (Pesos Argentinos)":
-                        total_usd = total_estimado / data_manager.config['tipo_cambio']
-                        st.metric("💰 Total Estimado", f"${total_usd:,.0f} USD")
-                    elif tipo_moneda == "USD (Dólares)":
-                        st.metric("💰 Total Estimado", f"${total_estimado:,.0f} USD")
-                    else:  # Auto-detectar
-                        avg_monto = montos_procesados.mean()
-                        if avg_monto > 1000:
-                            # Probablemente ARS
-                            total_usd = total_estimado / data_manager.config['tipo_cambio']
-                            st.metric("💰 Total Est. (ARS→USD)", f"${total_usd:,.0f} USD")
-                        else:
-                            # Probablemente USD
-                            st.metric("💰 Total Est. (USD)", f"${total_estimado:,.0f} USD")
+                    st.metric("💰 Total Estimado", f"${total_estimado:,.0f} ARS")
                 
                 with col4:
                     registros_validos = len(df.dropna(subset=[col_paciente, col_tratamiento, col_monto]))
                     st.metric("✅ Registros Válidos", registros_validos)
                 
-                # 6. BOTÓN DE MIGRACIÓN
+                # Botón de migración
                 st.markdown("---")
                 
                 col1, col2 = st.columns([3, 1])
@@ -583,7 +520,6 @@ def show_migration_tool_flexible(data_manager):
                 
                 with col2:
                     if st.button("🚀 Ejecutar Migración", type="primary", use_container_width=True):
-                        # EJECUTAR MIGRACIÓN
                         with st.spinner("⏳ Migrando datos..."):
                             resultado = ejecutar_migracion_flexible(
                                 df=df,
@@ -592,11 +528,9 @@ def show_migration_tool_flexible(data_manager):
                                 col_monto=col_monto,
                                 col_fecha=col_fecha if col_fecha != '-- Usar fecha actual --' else None,
                                 col_medio_pago=col_medio_pago if col_medio_pago != '-- Usar "No especificado" --' else None,
-                                tipo_moneda=tipo_moneda,
                                 data_manager=data_manager
                             )
                         
-                        # MOSTRAR RESULTADOS
                         if resultado['success']:
                             st.success("✅ ¡Migración completada exitosamente!")
                             
@@ -606,7 +540,7 @@ def show_migration_tool_flexible(data_manager):
                             with col2:
                                 st.metric("❌ Errores", resultado['errores'])
                             with col3:
-                                st.metric("💰 Total Migrado", f"${resultado['total_usd']:.2f} USD")
+                                st.metric("💰 Total Migrado", f"${resultado['total_ars']:,.0f} ARS")
                             
                             if resultado['errores'] > 0:
                                 st.warning(f"⚠️ {resultado['errores']} registros tuvieron problemas y no se migraron")
@@ -626,105 +560,53 @@ def show_migration_tool_flexible(data_manager):
             st.error(f"❌ Error procesando el archivo: {e}")
     
     else:
-        # INFORMACIÓN DE AYUDA CUANDO NO HAY ARCHIVO
         st.info("📁 Sube un archivo CSV para comenzar")
-        
-        with st.expander("💡 Formatos de CSV Compatibles"):
-            st.markdown("""
-            **Esta herramienta puede trabajar con CSVs que contengan:**
-            
-            📋 **Columnas típicas:**
-            - Nombres de pacientes (cualquier nombre de columna)
-            - Tratamientos o servicios realizados
-            - Montos/precios (en cualquier formato)
-            - Fechas (múltiples formatos soportados)
-            - Medios de pago (opcional)
-            
-            💰 **Formatos de montos soportados:**
-            - `1234.56`, `1,234.56`, `1.234,56`
-            - `$1,234.56`, `USD 1234`, `€ 1.234,56`
-            - Montos negativos: `-1234.56`
-            
-            📅 **Formatos de fecha soportados:**
-            - `dd/mm/yyyy`, `mm/dd/yyyy`, `yyyy-mm-dd`
-            - `dd-mm-yyyy`, `dd.mm.yyyy`
-            - Con hora: `dd/mm/yyyy hh:mm:ss`
-            
-            🌍 **Encodings soportados:**
-            - UTF-8, Latin-1, CP1252, ISO-8859-1
-            """)
 
 def ejecutar_migracion_flexible(df, col_paciente, col_tratamiento, col_monto, 
-                               col_fecha=None, col_medio_pago=None, 
-                               tipo_moneda="Detectar automáticamente", data_manager=None):
-    """Ejecuta la migración flexible con mapeo de columnas"""
+                               col_fecha=None, col_medio_pago=None, data_manager=None):
+    """Ejecuta la migración flexible solo con pesos argentinos"""
     
     try:
         consultas_migradas = []
         errores = 0
-        total_usd = 0
+        total_ars = 0
         
         for index, row in df.iterrows():
             try:
-                # Procesar fecha
                 if col_fecha:
                     fecha = normalizar_fecha_flexible(row[col_fecha])
                 else:
                     fecha = datetime.now().isoformat()
                 
-                # Procesar paciente
                 paciente = str(row[col_paciente]).strip() if pd.notna(row[col_paciente]) else f'Paciente_{index+1}'
-                
-                # Procesar tratamiento
                 tratamiento = str(row[col_tratamiento]).strip() if pd.notna(row[col_tratamiento]) else 'Consulta'
-                
-                # Procesar monto
                 monto_numerico = extraer_monto_numerico(row[col_monto])
                 
                 if monto_numerico <= 0:
                     errores += 1
                     continue
                 
-                # Determinar ARS y USD según configuración
-                if tipo_moneda == "ARS (Pesos Argentinos)":
-                    monto_ars = monto_numerico
-                    monto_usd = monto_numerico / data_manager.config['tipo_cambio']
-                elif tipo_moneda == "USD (Dólares)":
-                    monto_usd = monto_numerico
-                    monto_ars = monto_numerico * data_manager.config['tipo_cambio']
-                else:  # Auto-detectar
-                    if monto_numerico > 1000:  # Probablemente ARS
-                        monto_ars = monto_numerico
-                        monto_usd = monto_numerico / data_manager.config['tipo_cambio']
-                    else:  # Probablemente USD
-                        monto_usd = monto_numerico
-                        monto_ars = monto_numerico * data_manager.config['tipo_cambio']
-                
-                # Procesar medio de pago
                 if col_medio_pago:
                     medio_pago = str(row[col_medio_pago]).strip() if pd.notna(row[col_medio_pago]) else 'No especificado'
                 else:
                     medio_pago = 'No especificado'
                 
-                # Crear consulta
                 consulta = {
                     'fecha': fecha,
                     'paciente': paciente,
                     'tratamiento': tratamiento,
-                    'monto_ars': round(monto_ars, 2),
-                    'monto_usd': round(monto_usd, 2),
+                    'monto_ars': round(monto_numerico, 0),
                     'medio_pago': medio_pago
                 }
                 
                 consultas_migradas.append(consulta)
-                total_usd += monto_usd
+                total_ars += monto_numerico
                 
             except Exception as e:
                 errores += 1
                 st.warning(f"Error en fila {index+1}: {e}")
                 continue
         
-        # Agregar a data_manager
         if consultas_migradas:
             for consulta in consultas_migradas:
                 nueva_fila = {
@@ -732,7 +614,6 @@ def ejecutar_migracion_flexible(df, col_paciente, col_tratamiento, col_monto,
                     'paciente': consulta['paciente'], 
                     'tratamiento': consulta['tratamiento'],
                     'monto_ars': consulta['monto_ars'],
-                    'monto_usd': consulta['monto_usd'],
                     'medio_pago': consulta['medio_pago']
                 }
                 
@@ -747,7 +628,7 @@ def ejecutar_migracion_flexible(df, col_paciente, col_tratamiento, col_monto,
             'success': True,
             'migrados': len(consultas_migradas),
             'errores': errores,
-            'total_usd': round(total_usd, 2)
+            'total_ars': round(total_ars, 0)
         }
         
     except Exception as e:
@@ -756,21 +637,19 @@ def ejecutar_migracion_flexible(df, col_paciente, col_tratamiento, col_monto,
             'error': str(e),
             'migrados': 0,
             'errores': 0,
-            'total_usd': 0
+            'total_ars': 0
         }
 
-# Función wrapper para mantener compatibilidad
 def show_migration_tool(data_manager):
     """Wrapper para la función de migración flexible"""
     show_migration_tool_flexible(data_manager)
 
 def show_dashboard(data_manager, user_info):
-    """Mostrar dashboard principal"""
+    """Dashboard principal solo en pesos"""
     st.subheader(f"📊 Dashboard - {user_info.get('nombre', 'Usuario')}")
     
     resumen = data_manager.get_resumen()
     
-    # Información de plan
     plan = user_info.get('plan', 'trial')
     if plan == 'trial':
         st.info("🎯 Plan de prueba activo. Sus datos son privados y están separados de otros usuarios.")
@@ -782,15 +661,15 @@ def show_dashboard(data_manager, user_info):
     with col1:
         st.metric(
             "💰 Ingresos Totales",
-            f"${resumen['ingreso_total']} USD",
-            delta=f"${resumen['ingresos_mes']} este mes"
+            f"${resumen['ingreso_total']:,.0f} ARS",
+            delta=f"${resumen['ingresos_mes']:,.0f} este mes"
         )
     
     with col2:
         st.metric("👥 Total Consultas", resumen['total_consultas'])
     
     with col3:
-        st.metric("📊 Promedio/Consulta", f"${resumen['promedio_consulta']} USD")
+        st.metric("📊 Promedio/Consulta", f"${resumen['promedio_consulta']:,.0f} ARS")
     
     with col4:
         st.metric("🔥 Más Popular", resumen['tratamiento_popular'])
@@ -804,15 +683,15 @@ def show_dashboard(data_manager, user_info):
             df_monthly = data_manager.consultas.copy()
             df_monthly['fecha'] = pd.to_datetime(df_monthly['fecha'])
             df_monthly['mes'] = df_monthly['fecha'].dt.to_period('M')
-            monthly_income = df_monthly.groupby('mes')['monto_usd'].sum().reset_index()
+            monthly_income = df_monthly.groupby('mes')['monto_ars'].sum().reset_index()
             monthly_income['mes'] = monthly_income['mes'].astype(str)
             
             fig_monthly = px.bar(
                 monthly_income, 
                 x='mes', 
-                y='monto_usd',
-                title="Ingresos Mensuales (USD)",
-                color='monto_usd',
+                y='monto_ars',
+                title="Ingresos Mensuales (ARS)",
+                color='monto_ars',
                 color_continuous_scale='Blues'
             )
             fig_monthly.update_layout(showlegend=False)
@@ -835,24 +714,24 @@ def show_dashboard(data_manager, user_info):
         recent_consultas = data_manager.consultas.tail(10).copy()
         if not recent_consultas.empty:
             recent_consultas['fecha'] = pd.to_datetime(recent_consultas['fecha']).dt.strftime('%d/%m/%Y %H:%M')
-            recent_consultas = recent_consultas[['fecha', 'paciente', 'tratamiento', 'monto_usd', 'medio_pago']]
-            recent_consultas.columns = ['Fecha', 'Paciente', 'Tratamiento', 'Monto (USD)', 'Medio de Pago']
+            recent_consultas = recent_consultas[['fecha', 'paciente', 'tratamiento', 'monto_ars', 'medio_pago']]
+            recent_consultas.columns = ['Fecha', 'Paciente', 'Tratamiento', 'Monto (ARS)', 'Medio de Pago']
             st.dataframe(recent_consultas, use_container_width=True)
     
     else:
-        st.info("📝 No hay consultas registradas aún. ¡Comience agregando su primera consulta!")
+        st.info("No hay consultas registradas aún. ¡Comience agregando su primera consulta!")
 
 def show_nueva_consulta(data_manager):
-    """Formulario para nueva consulta"""
-    st.subheader("➕ Registrar Nueva Consulta")
+    """Formulario para nueva consulta solo en pesos"""
+    st.subheader("Registrar Nueva Consulta")
     
     with st.form("nueva_consulta"):
         col1, col2 = st.columns(2)
         
         with col1:
-            paciente = st.text_input("👤 Nombre del Paciente *", placeholder="Ej: Juan Pérez")
+            paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
             tratamiento = st.selectbox(
-                "🦷 Tipo de Tratamiento *",
+                "Tipo de Tratamiento *",
                 ["Consulta", "Consulta de Urgencia", "Limpieza", "Operatoria Simple", 
                  "Operatoria Compleja", "Endodoncia Unirradicular", "Endodoncia Multirradicular",
                  "Placa Estabilizadora", "Provisorio", "Corona Metálica", "Corona de Porcelana",
@@ -860,65 +739,62 @@ def show_nueva_consulta(data_manager):
             )
         
         with col2:
-            monto_ars = st.number_input("💰 Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
+            monto_ars = st.number_input("Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
             medio_pago = st.selectbox(
-                "💳 Medio de Pago *",
+                "Medio de Pago *",
                 ["Efectivo", "Transferencia", "Débito", "Crédito", "Mercado Pago", "Otros"]
             )
         
-        monto_usd = monto_ars / data_manager.config['tipo_cambio']
-        st.info(f"💱 Equivalente en USD: ${monto_usd:.2f} (TC: ${data_manager.config['tipo_cambio']})")
-        
-        submitted = st.form_submit_button("✅ Registrar Consulta", type="primary")
+        submitted = st.form_submit_button("Registrar Consulta", type="primary")
         
         if submitted:
             if paciente and tratamiento and monto_ars > 0:
                 try:
                     nueva_consulta = data_manager.add_consulta(paciente, tratamiento, monto_ars, medio_pago)
-                    st.success(f"✅ Consulta registrada: {paciente} - {tratamiento} - ${monto_ars:,.0f} ARS")
+                    st.success(f"Consulta registrada: {paciente} - {tratamiento} - ${monto_ars:,.0f} ARS")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Error al registrar consulta: {e}")
+                    st.error(f"Error al registrar consulta: {e}")
             else:
-                st.error("❌ Por favor complete todos los campos obligatorios (*)")
+                st.error("Por favor complete todos los campos obligatorios (*)")
 
 def show_calculadora_precios(data_manager):
-    """Calculadora de precios optimizada"""
-    st.subheader("💰 Calculadora de Precios")
+    """Calculadora de precios solo en pesos"""
+    st.subheader("Calculadora de Precios")
     
     col1, col2 = st.columns([2, 1])
     
     with col1:
         with st.form("calculadora"):
-            st.write("📊 Parámetros del Tratamiento")
+            st.write("Parámetros del Tratamiento")
             
             time_hours = st.number_input(
-                "⏱️ Tiempo estimado (horas) *", 
+                "Tiempo estimado (horas) *", 
                 min_value=0.1, 
                 max_value=10.0, 
                 value=1.0, 
                 step=0.25
             )
             
-            materials_usd = st.number_input(
-                "🧪 Costo de materiales (USD) *", 
+            materials_ars = st.number_input(
+                "Costo de materiales (ARS) *", 
                 min_value=0.0, 
-                value=5.0, 
-                step=1.0
+                value=5000.0, 
+                step=500.0
             )
             
             tratamiento_calc = st.text_input(
-                "🦷 Nombre del tratamiento (opcional)", 
+                "Nombre del tratamiento (opcional)", 
                 placeholder="Ej: Operatoria simple"
             )
             
-            calcular = st.form_submit_button("🧮 Calcular Precio", type="primary")
+            calcular = st.form_submit_button("Calcular Precio", type="primary")
             
             if calcular:
                 try:
                     resultado = calculate_price_optimized(
                         time_hours, 
-                        materials_usd, 
+                        materials_ars, 
                         data_manager.config['costo_por_hora'],
                         data_manager.config['margen_ganancia']
                     )
@@ -926,56 +802,52 @@ def show_calculadora_precios(data_manager):
                     st.session_state.ultimo_calculo = resultado
                     
                 except Exception as e:
-                    st.error(f"❌ Error en cálculo: {e}")
+                    st.error(f"Error en cálculo: {e}")
     
     with col2:
-        st.write("⚙️ Configuración Actual")
-        st.metric("💼 Costo por Hora", f"${data_manager.config['costo_por_hora']} USD")
-        st.metric("📊 Margen", f"{data_manager.config['margen_ganancia']*100:.0f}%")
-        st.metric("💱 Tipo de Cambio", f"${data_manager.config['tipo_cambio']} ARS")
+        st.write("Configuración Actual")
+        st.metric("Costo por Hora", f"${data_manager.config['costo_por_hora']:,.0f} ARS")
+        st.metric("Margen", f"{data_manager.config['margen_ganancia']*100:.0f}%")
     
     if hasattr(st.session_state, 'ultimo_calculo'):
         resultado = st.session_state.ultimo_calculo
         
         st.markdown("---")
-        st.subheader("📋 Resultado del Cálculo")
+        st.subheader("Resultado del Cálculo")
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("👷 Mano de Obra", f"${resultado['mano_obra']} USD")
+            st.metric("Mano de Obra", f"${resultado['mano_obra']:,.0f} ARS")
         
         with col2:
-            st.metric("🧪 Materiales", f"${resultado['materiales']} USD")
+            st.metric("Materiales", f"${resultado['materiales']:,.0f} ARS")
         
         with col3:
-            st.metric("💰 Costo Total", f"${resultado['costo_total']} USD")
+            st.metric("Costo Total", f"${resultado['costo_total']:,.0f} ARS")
         
         with col4:
-            st.metric("🎯 Precio Final", f"${resultado['precio_final']} USD")
-        
-        precio_ars = resultado['precio_final'] * data_manager.config['tipo_cambio']
-        st.info(f"💱 Precio en ARS: ${precio_ars:,.0f}")
+            st.metric("Precio Final", f"${resultado['precio_final']:,.0f} ARS")
 
 def show_configuracion(data_manager):
-    """Configuración del sistema"""
-    st.subheader("⚙️ Configuración del Sistema")
+    """Configuración del sistema solo en pesos"""
+    st.subheader("Configuración del Sistema")
     
     with st.form("configuracion"):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.write("💼 Configuración Profesional")
+            st.write("Configuración Profesional")
             
             nuevo_costo = st.number_input(
-                "💰 Costo por Hora (USD)",
-                min_value=1.0,
-                value=data_manager.config['costo_por_hora'],
-                step=0.50
+                "Costo por Hora (ARS)",
+                min_value=1000.0,
+                value=float(data_manager.config['costo_por_hora']),
+                step=1000.0
             )
             
             nuevo_margen = st.slider(
-                "📊 Margen de Ganancia (%)",
+                "Margen de Ganancia (%)",
                 min_value=10,
                 max_value=100,
                 value=int(data_manager.config['margen_ganancia'] * 100),
@@ -983,10 +855,10 @@ def show_configuracion(data_manager):
             ) / 100
         
         with col2:
-            st.write("🌍 Configuración Regional")
+            st.write("Configuración Regional")
             
             nueva_region = st.selectbox(
-                "📍 Su Región",
+                "Su Región",
                 ["CABA", "GBA Norte", "GBA Sur", "La Plata", "Córdoba Capital", 
                  "Rosario", "Mendoza", "Tucumán", "Interior Pampeano", 
                  "Interior NOA/NEA", "Patagonia Norte", "Patagonia Sur"],
@@ -994,45 +866,37 @@ def show_configuracion(data_manager):
                        "Rosario", "Mendoza", "Tucumán", "Interior Pampeano", 
                        "Interior NOA/NEA", "Patagonia Norte", "Patagonia Sur"].index(data_manager.config['region'])
             )
-            
-            nuevo_cambio = st.number_input(
-                "💱 Tipo de Cambio ARS/USD",
-                min_value=1.0,
-                value=float(data_manager.config['tipo_cambio']),
-                step=10.0
-            )
         
-        guardar = st.form_submit_button("💾 Guardar Configuración", type="primary")
+        guardar = st.form_submit_button("Guardar Configuración", type="primary")
         
         if guardar:
             data_manager.config.update({
                 'costo_por_hora': nuevo_costo,
                 'margen_ganancia': nuevo_margen,
-                'region': nueva_region,
-                'tipo_cambio': nuevo_cambio
+                'region': nueva_region
             })
             
             if data_manager.save_data():
-                st.success("✅ Configuración guardada exitosamente")
+                st.success("Configuración guardada exitosamente")
                 st.rerun()
             else:
-                st.error("❌ Error al guardar configuración")
+                st.error("Error al guardar configuración")
 
 def show_reportes(data_manager):
-    """Mostrar reportes detallados"""
-    st.subheader("📈 Reportes Detallados")
+    """Reportes solo en pesos"""
+    st.subheader("Reportes Detallados")
     
     if data_manager.consultas.empty:
-        st.info("📝 No hay datos suficientes para generar reportes. Agregue algunas consultas primero.")
+        st.info("No hay datos suficientes para generar reportes. Agregue algunas consultas primero.")
         return
     
     col1, col2 = st.columns(2)
     
     with col1:
-        fecha_inicio = st.date_input("📅 Fecha Inicio", value=date.today().replace(day=1))
+        fecha_inicio = st.date_input("Fecha Inicio", value=date.today().replace(day=1))
     
     with col2:
-        fecha_fin = st.date_input("📅 Fecha Fin", value=date.today())
+        fecha_fin = st.date_input("Fecha Fin", value=date.today())
     
     df_filtrado = data_manager.consultas.copy()
     df_filtrado['fecha'] = pd.to_datetime(df_filtrado['fecha'])
@@ -1042,34 +906,34 @@ def show_reportes(data_manager):
     ]
     
     if df_filtrado.empty:
-        st.warning("⚠️ No hay datos en el rango de fechas seleccionado")
+        st.warning("No hay datos en el rango de fechas seleccionado")
         return
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("👥 Consultas", len(df_filtrado))
+        st.metric("Consultas", len(df_filtrado))
     
     with col2:
-        ingresos_periodo = df_filtrado['monto_usd'].sum()
-        st.metric("💰 Ingresos", f"${ingresos_periodo:.2f} USD")
+        ingresos_periodo = df_filtrado['monto_ars'].sum()
+        st.metric("Ingresos", f"${ingresos_periodo:,.0f} ARS")
     
     with col3:
-        promedio_periodo = df_filtrado['monto_usd'].mean()
-        st.metric("📊 Promedio", f"${promedio_periodo:.2f} USD")
+        promedio_periodo = df_filtrado['monto_ars'].mean()
+        st.metric("Promedio", f"${promedio_periodo:,.0f} ARS")
     
     with col4:
         dias_periodo = (fecha_fin - fecha_inicio).days + 1
         consultas_por_dia = len(df_filtrado) / dias_periodo
-        st.metric("📅 Consultas/Día", f"{consultas_por_dia:.1f}")
+        st.metric("Consultas/Día", f"{consultas_por_dia:.1f}")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📈 Evolución Diaria")
+        st.subheader("Evolución Diaria")
         
         df_diario = df_filtrado.groupby(df_filtrado['fecha'].dt.date).agg({
-            'monto_usd': 'sum',
+            'monto_ars': 'sum',
             'paciente': 'count'
         }).reset_index()
         df_diario.columns = ['fecha', 'ingresos', 'consultas']
@@ -1079,21 +943,21 @@ def show_reportes(data_manager):
             x=df_diario['fecha'],
             y=df_diario['ingresos'],
             mode='lines+markers',
-            name='Ingresos USD',
+            name='Ingresos ARS',
             line=dict(color='#3b82f6')
         ))
         
         fig_daily.update_layout(
             title="Ingresos Diarios",
             xaxis_title="Fecha",
-            yaxis_title="Ingresos (USD)"
+            yaxis_title="Ingresos (ARS)"
         )
         st.plotly_chart(fig_daily, use_container_width=True)
     
     with col2:
-        st.subheader("💳 Medios de Pago")
+        st.subheader("Medios de Pago")
         
-        medios_pago = df_filtrado.groupby('medio_pago')['monto_usd'].sum()
+        medios_pago = df_filtrado.groupby('medio_pago')['monto_ars'].sum()
         
         fig_payment = px.pie(
             values=medios_pago.values,
@@ -1102,49 +966,48 @@ def show_reportes(data_manager):
         )
         st.plotly_chart(fig_payment, use_container_width=True)
     
-    st.subheader("📋 Detalle de Consultas")
+    st.subheader("Detalle de Consultas")
     
     df_display = df_filtrado.copy()
     df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y %H:%M')
-    df_display = df_display[['fecha', 'paciente', 'tratamiento', 'monto_ars', 'monto_usd', 'medio_pago']]
-    df_display.columns = ['Fecha', 'Paciente', 'Tratamiento', 'Monto ARS', 'Monto USD', 'Medio Pago']
+    df_display = df_display[['fecha', 'paciente', 'tratamiento', 'monto_ars', 'medio_pago']]
+    df_display.columns = ['Fecha', 'Paciente', 'Tratamiento', 'Monto ARS', 'Medio Pago']
     
     df_display['Monto ARS'] = df_display['Monto ARS'].apply(lambda x: f"${x:,.0f}")
-    df_display['Monto USD'] = df_display['Monto USD'].apply(lambda x: f"${x:.2f}")
     
     st.dataframe(df_display, use_container_width=True)
     
-    if st.button("📥 Exportar Reporte a CSV"):
+    if st.button("Exportar Reporte a CSV"):
         csv = df_display.to_csv(index=False, encoding='utf-8-sig')
         st.download_button(
-            label="💾 Descargar CSV",
+            label="Descargar CSV",
             data=csv,
             file_name=f"reporte_dental_{fecha_inicio}_{fecha_fin}.csv",
             mime="text/csv"
         )
 
 def show_login():
-    """Pantalla de login segura"""
-    st.title("🦷 Sistema de Gestión de Consultorios Odontológicos - Login")
+    """Pantalla de login"""
+    st.title("Sistema de Gestión de Consultorios Odontológicos - Login")
     
-    # Solo mostrar información básica, NO las credenciales
-    with st.expander("ℹ️ Información del Sistema"):
+    with st.expander("Información del Sistema"):
         st.markdown("""
         **Sistema de Gestión Dental v2.0**
         
-        ✨ **Características:**
+        **Características:**
         - Dashboard con métricas en tiempo real
         - Gestión de consultas y pacientes
         - Calculadora de precios profesional
         - Reportes detallados y exportación
         - Sistema multi-usuario con datos separados
+        - Todo en pesos argentinos
         
-        🔐 **Acceso:**
+        **Acceso:**
         - Cada usuario tiene sus propios datos privados
         - Sistema de autenticación seguro
         - Datos completamente separados entre usuarios
         
-        📞 **Soporte:**
+        **Soporte:**
         - Para obtener credenciales de acceso, contacte al administrador
         - Demo disponible para evaluación
         """)
@@ -1153,26 +1016,25 @@ def show_login():
     
     with col2:
         with st.form("login_form"):
-            st.write("🔋 Ingresar al Sistema")
+            st.write("Ingresar al Sistema")
             
-            username = st.text_input("👤 Usuario", placeholder="Ingrese su usuario")
-            password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingrese su contraseña")
+            username = st.text_input("Usuario", placeholder="Ingrese su usuario")
+            password = st.text_input("Contraseña", type="password", placeholder="Ingrese su contraseña")
             
-            # Checkbox para mostrar hint de demo (opcional)
-            show_demo_hint = st.checkbox("🎯 Mostrar usuarios de demo")
+            show_demo_hint = st.checkbox("Mostrar usuarios de demo")
             
             if show_demo_hint:
                 st.info("""
                 **Usuarios de prueba disponibles:**
                 
-                👨‍⚕️ **Administrador**: `admin` / `admin123`
-                👩‍⚕️ **Demo 1**: `demo1` / `demo123`  
-                🦷 **Demo 2**: `demo2` / `demo123`
+                **Administrador**: `admin` / `admin123`
+                **Demo 1**: `demo1` / `demo123`  
+                **Demo 2**: `demo2` / `demo123`
                 
-                ⚠️ Solo para evaluación del sistema
+                Solo para evaluación del sistema
                 """)
             
-            login_button = st.form_submit_button("🚀 Ingresar", use_container_width=True)
+            login_button = st.form_submit_button("Ingresar", use_container_width=True)
             
             if login_button:
                 if username and password:
@@ -1184,24 +1046,22 @@ def show_login():
                         st.session_state.user_id = username
                         st.session_state.user_info = user_manager.get_user_info(username)
                         
-                        st.success(f"✅ {message}")
+                        st.success(f"{message}")
                         st.rerun()
                     else:
-                        st.error(f"❌ {message}")
-                        # Hint sutil para usuarios que tienen problemas
+                        st.error(f"{message}")
                         if "Usuario no encontrado" in message:
-                            st.info("💡 Tip: Verifique el nombre de usuario. Para demo, active el checkbox superior.")
+                            st.info("Tip: Verifique el nombre de usuario. Para demo, active el checkbox superior.")
                 else:
-                    st.warning("⚠️ Por favor complete todos los campos")
+                    st.warning("Por favor complete todos los campos")
     
-    # Footer con información de contacto (sin credenciales)
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("""
         <div style='text-align: center; color: #666; font-size: 0.8em;'>
-        📧 ¿Necesita acceso? Contacte al administrador del sistema<br>
-        🔒 Sistema seguro - Datos protegidos y privados
+        ¿Necesita acceso? Contacte al administrador del sistema<br>
+        Sistema seguro - Datos protegidos y privados
         </div>
         """, unsafe_allow_html=True)
 
@@ -1216,13 +1076,13 @@ def main():
     col1, col2, col3 = st.columns([3, 1, 1])
     
     with col1:
-        st.markdown('<h1 class="main-header">🦷 Sistema de Gestión de Consultorios Odontológicos v2.0</h1>', unsafe_allow_html=True)
+        st.markdown('<h1 class="main-header">Sistema de Gestión de Consultorios Odontológicos v2.0</h1>', unsafe_allow_html=True)
     
     with col2:
-        st.write(f"👤 {user_info.get('nombre', user_id)}")
+        st.write(f"{user_info.get('nombre', user_id)}")
     
     with col3:
-        if st.button("🚪 Cerrar Sesión"):
+        if st.button("Cerrar Sesión"):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
@@ -1233,40 +1093,37 @@ def main():
     data_manager = st.session_state.data_manager
     
     with st.sidebar:
-        # SIDEBAR SIN IMAGEN ROTA
         st.markdown("""
         <div style='text-align: center; padding: 1rem; background: linear-gradient(90deg, #3b82f6 0%, #1e40af 100%); border-radius: 0.5rem; margin-bottom: 1rem; color: white;'>
-        <h3>🦷 Dental v2.0</h3>
+        <h3>Dental v2.0</h3>
         <p style='margin: 0; font-size: 0.9em;'>Sistema de Gestión</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # MENÚ SIMPLIFICADO (SIN BENCHMARKS)
         menu = st.selectbox(
-            "📋 Menú Principal",
-            ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Calculadora de Precios", 
-             "⚙️ Configuración", "📈 Reportes", "📥 Migrar Datos"]
+            "Menú Principal",
+            ["Dashboard", "Nueva Consulta", "Calculadora de Precios", 
+             "Configuración", "Reportes", "Migrar Datos"]
         )
         
         st.markdown("---")
         
         resumen = data_manager.get_resumen()
-        st.metric("💰 Ingresos Totales", f"${resumen['ingreso_total']} USD")
-        st.metric("👥 Consultas", resumen['total_consultas'])
-        st.metric("📊 Promedio", f"${resumen['promedio_consulta']} USD")
+        st.metric("Ingresos Totales", f"${resumen['ingreso_total']:,.0f} ARS")
+        st.metric("Consultas", resumen['total_consultas'])
+        st.metric("Promedio", f"${resumen['promedio_consulta']:,.0f} ARS")
     
-    # NAVEGACIÓN SIMPLIFICADA (SIN BENCHMARKS)
-    if menu == "🏠 Dashboard":
+    if menu == "Dashboard":
         show_dashboard(data_manager, user_info)
-    elif menu == "➕ Nueva Consulta":
+    elif menu == "Nueva Consulta":
         show_nueva_consulta(data_manager)
-    elif menu == "💰 Calculadora de Precios":
+    elif menu == "Calculadora de Precios":
         show_calculadora_precios(data_manager)
-    elif menu == "⚙️ Configuración":
+    elif menu == "Configuración":
         show_configuracion(data_manager)
-    elif menu == "📈 Reportes":
+    elif menu == "Reportes":
         show_reportes(data_manager)
-    elif menu == "📥 Migrar Datos":
+    elif menu == "Migrar Datos":
         show_migration_tool(data_manager)
 
 if __name__ == "__main__":
