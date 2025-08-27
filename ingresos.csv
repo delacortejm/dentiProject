@@ -1,113 +1,113 @@
 Fecha,Paciente,Tratamiento,Monto Total,Medio de Pago,Período de impacto
-01-03-2025,Pebbles,Endodoncia,$100.000,TRANSFERENCIA,mar 2025
-02-03-2025,Daphne Blake,Consulta,$5.000,EFECTIVO,mar 2025
-05-03-2025,Gohan,Operatoria,$60.000,TRANSFERENCIA,mar 2025
-05-03-2025,El Chómpiras,Limpieza,$35.000,EFECTIVO,mar 2025
-06-03-2025,Foghorn Leghorn,Limpieza,$40.000,EFECTIVO,mar 2025
-06-03-2025,Lisa Simpson,Consulta,$20.000,TRANSFERENCIA,
-10-03-2025,El Chapulín Colorado,Operatoria,$35.000,TRANSFERENCIA,
-13-03-2025,Ms. Pac-Man,Obra social,$91.024,TRANSFERENCIA,
+01-03-2025,Pebbles,Endodoncia,"$100,000",TRANSFERENCIA,mar 2025
+02-03-2025,Daphne Blake,Consulta,"$5,000",EFECTIVO,mar 2025
+05-03-2025,Gohan,Operatoria,"$60,000",TRANSFERENCIA,mar 2025
+05-03-2025,El Chómpiras,Limpieza,"$35,000",EFECTIVO,mar 2025
+06-03-2025,Foghorn Leghorn,Limpieza,"$40,000",EFECTIVO,mar 2025
+06-03-2025,Lisa Simpson,Consulta,"$20,000",TRANSFERENCIA,
+10-03-2025,El Chapulín Colorado,Operatoria,"$35,000",TRANSFERENCIA,
+13-03-2025,Ms. Pac-Man,Obra social,"$91,024",TRANSFERENCIA,
 14-03-2025,Godínez,Obra social,,TRANSFERENCIA,
-14-03-2025,Lisa Simpson 1,Blanqueamiento ambulatorio,$75.000,TRANSFERENCIA,
-14-03-2025,Ígor,Operatoria,$80.000,TRANSFERENCIA,
-12-03-2025,Mario Bros,Consulta,$6.000,EFECTIVO,
-15-03-2025,Pebbles 1,Placa estabilizadora oclusal,$100.000,EFECTIVO,
-15-03-2025,Winnie Pooh,Placa estabilizadora oclusal,$100.000,EFECTIVO,
-17-03-2025,Ms. Pac-Man,Obra social,$53.423,TRANSFERENCIA,
-18-03-2025,Sherlock Holmes,Consulta,$5.000,TRANSFERENCIA,
-18-03-2025,Mickey Mouse,Consulta,$5.000,EFECTIVO,
-19-03-2025,Minnie Mouse,Limpieza,$35.000,TRANSFERENCIA,
-19-03-2025,Jane,Operatoria,$35.000,EFECTIVO,
-21-03-2025,Donkey Kong,Consulta,$5.000,TRANSFERENCIA,
-21-03-2025,Doña Cleotilde,Operatoria,$70.000,TRANSFERENCIA,
-26-06-2025,Jerry,Consulta,$10.000,EFECTIVO,
-26-06-2025,Aquaman,Operatoria,$40.000,TRANSFERENCIA,
-27-03-2025,Ñoño,Blanqueamiento interno,$40.000,TRANSFERENCIA,
-27-03-2025,Jerry 1,Obra social,$12.033,TRANSFERENCIA,
-28-03-2025,Pablo Mármol,Consulta,$5.000,EFECTIVO,
-28-03-2025,Foghorn Leghorn 1,Consulta,$5.000,EFECTIVO,
-29-03-2025,Snoopy,Blanqueamiento ambulatorio,$150.000,TRANSFERENCIA,
-01-04-2025,Don Ramón,Consulta,$10.000,EFECTIVO,
-01-04-2025,Arenita,Consulta,$5.000,EFECTIVO,
-01-04-2025,Bob Esponja,Endodoncia,$100.000,TRANSFERENCIA,
-03-04-2025,Ned Flanders,Limpieza,"$53.996,46",TARJETA DE CREDITO,
-03-04-2025,Penny,Operatoria,$53.996,TARJETA DE CREDITO,
-04-04-2025,Ikki,Operatoria,$80.000,TRANSFERENCIA,
-07-04-2025,Plankton,Blanqueamiento interno,$40.000,TRANSFERENCIA,
-07-04-2025,Hansel,Consulta,$10.000,TRANSFERENCIA,
-14-04-2025,Reverendo Alegría,Consulta,$15.000,EFECTIVO,
-14-04-2025,Goku,Obra social,$179.128,TRANSFERENCIA,
-15-04-2025,Piglet,Placa estabilizadora oclusal,$40.000,TRANSFERENCIA,
-15-04-2025,Plankton 1,Operatoria,$40.000,TRANSFERENCIA,
-15-04-2025,Ms. Pac-Man 1,Limpieza,$35.000,EFECTIVO,
-16-04-2025,Bob Esponja,Operatoria,$40.000,TRANSFERENCIA,
-17-04-2025,Godínez 1,Operatoria,$40.000,EFECTIVO,
-17-04-2025,He-Man,Operatoria,$80.000,EFECTIVO,
-22-04-2025,Aquaman 1,Operatoria,$70.000,TRANSFERENCIA,
-22-04-2025,Correcaminos,Corona,$60.000,TRANSFERENCIA,
-23-04-2025,Milk,Consulta,$5.000,TRANSFERENCIA,
-24-04-2025,Superman,Consulta,$15.000,TRANSFERENCIA,
-24-04-2025,Blancanieves,Consulta,$15.000,TRANSFERENCIA,
-25-04-2025,Edna Krabappel,Operatoria,$40.000,TRANSFERENCIA,
-25-04-2025,Homero Simpson,Limpieza,$35.000,EFECTIVO,
-30-04-2025,Correcaminos 1,Placa estabilizadora oclusal,$50.000,EFECTIVO,
-30-04-2025,Gazú,Limpieza,$40.000,EFECTIVO,
-05-05-2025,Gepetto,Limpieza,$40.000,EFECTIVO,
-05-05-2025,Brain,Consulta,$10.000,EFECTIVO,mayo 2025
-09-05-2025,Snoopy 1,Obra social,$148.953,TRANSFERENCIA,
-13-05-2025,Donald Duck,Limpieza,$40.000,TRANSFERENCIA,mayo 2025
-13-05-2025,Pluto,Consulta,$10.000,TRANSFERENCIA,mayo 2025
-14-05-2025,Snoopy,Operatoria,$130.000,TRANSFERENCIA,mayo 2025
-16-05-2025,Ms. Pac-Man,Obra social,$60.000,,
-20-05-2025,Brain,Operatoria,$85.000,EFECTIVO,mayo 2025
-20-05-2025,Donkey Kong,Consulta,$10.000,TRANSFERENCIA,mayo 2025
-21-05-2025,Correcaminos 2,Operatoria,$40.000,TRANSFERENCIA,mayo 2025
-27-05-2025,Rafa Gorgory,Placa estabilizadora oclusal,$50.000,EFECTIVO,mayo 2025
-29-05-2025,Milhouse Van Houten,Obra social,$218.600,TRANSFERENCIA,mayo 2025
-06-06-2025,Don Ramón,Operatoria,$44.000,TRANSFERENCIA,junio 2025
-09-06-2025,Batman,Limpieza,$40.000,EFECTIVO,junio 2025
-13-06-2025,Ms. Pac-Man,Obra social,$89.700,TRANSFERENCIA,junio 2025
-16-06-2025,Bart Simpson,Operatoria,$100.000,TRANSFERENCIA,junio 2025
-16-06-2025,Doctor Chapatín,Operatoria,$80.000,EFECTIVO,junio 2025
-16-06-2025,Chita,Limpieza,$40.000,EFECTIVO,junio 2025
-17-06-2025,Ms. Pac-Man,Obra social,$37.104,TRANSFERENCIA,junio 2025
-18-06-2025,Dale,Endodoncia,$75.000,TRANSFERENCIA,junio 2025
-24-06-2025,Marvin el Marciano,Placa estabilizadora oclusal,$50.000,TRANSFERENCIA,junio 2025
-24-06-2025,Don Cangrejo,Placa estabilizadora oclusal,$75.000,TRANSFERENCIA,junio 2025
-26-06-2025,Casper,Endodoncia,$20.000,EFECTIVO,junio 2025
-07-07-2025,Milhouse Van Houten 1,Blanqueamiento ambulatorio,$150.000,TRANSFERENCIA,julio 2025
-07-07-2025,Milhouse Van Houten 2,Limpieza,$35.000,TRANSFERENCIA,julio 2025
-11-07-2025,Krillin,Operatoria,$50.000,EFECTIVO,julio 2025
-15-07-2025,Ms. Pac-Man,Obra social,"$64.864,14",TRANSFERENCIA,julio 2025
-17-07-2025,Brain,Consulta,$10.000,EFECTIVO,julio 2025
-17-07-2025,Donkey Kong 1,Limpieza,$40.000,EFECTIVO,julio 2025
-18-07-2025,Bart Simpson,Placa estabilizadora oclusal,$125.000,EFECTIVO,julio 2025
-18-07-2025,Aquaman 2,Operatoria,$60.000,TRANSFERENCIA,julio 2025
-19-07-2025,Tails,Endodoncia,$55.000,TRANSFERENCIA,julio 2025
-21-07-2025,Plankton 2,Operatoria,$50.000,EFECTIVO,julio 2025
-22-07-2025,Brain,Operatoria,$65.000,EFECTIVO,julio 2025
-22-07-2025,Arenita 1,Corona,$150.000,TRANSFERENCIA,julio 2025
-23-07-2022,Doña Florinda,Operatoria,$80.000,EFECTIVO,julio 2022
-25-07-2025,Seiya,Prótesis parcial removible,$150.000,EFECTIVO,julio 2025
-29-07-2025,Ikki,Consulta,$20.000,TRANSFERENCIA,julio 2025
-29-07-2025,Gretel,Consulta,$15.000,EFECTIVO,julio 2025
-30-07-2025,Plankton 3,Limpieza,$40.000,EFECTIVO,julio 2025
-30-07-2025,Astro,Consulta,$20.000,EFECTIVO,julio 2025
-30-07-2025,Doña Cleotilde 1,Operatoria,$80.000,EFECTIVO,julio 2025
-31-07-2025,Shiryu,Limpieza,$40.000,EFECTIVO,julio 2025
-31-07-2025,Bowser,Placa estabilizadora oclusal,$20.000,EFECTIVO,julio 2025
-31-07-2025,Princesa Peach,Placa estabilizadora oclusal,$250.000,EFECTIVO,julio 2025
-04-08-2025,Bowser,Placa estabilizadora oclusal,$105.000,EFECTIVO,agosto 2025
-04-08-2025,Astro,Limpieza,$40.000,EFECTIVO,agosto 2025
-04-08-2025,Supergirl,Limpieza,$40.000,EFECTIVO,agosto 2025
-05-08-2025,Krillin 1,Limpieza,$60.000,TRANSFERENCIA,agosto 2025
-06-08-2025,Milhouse Van Houten 2,Operatoria,$40.000,TRANSFERENCIA,agosto 2025
-11-08-2025,Gepetto 1,Consulta,$10.000,EFECTIVO,agosto 2025
-14-08-2025,Pato Lucas,Corona,$40.000,TRANSFERENCIA,agosto 2025
-18-08-2025,Doña Cleotilde 2,Obra social,$22.738,TRANSFERENCIA,agosto 2025
-18-08-2025,Chip,Corona,$50.000,TRANSFERENCIA,
-19-08-2025,Bulma,Obra social,$42.678,TRANSFERENCIA,agosto 2025
-19-08-2025,Don Ramón,Placa estabilizadora oclusal,$150.000,TRANSFERENCIA,agosto 2025
-21-08-2025,Olivia Oyl,Consulta,$20.000,EFECTIVO,agosto 2025
-21-08-2025,Piglet 1,Operatoria,$80.000,EFECTIVO,agosto 2025
-22-08-2025,Ikki,Placa estabilizadora oclusal,$230.000,TRANSFERENCIA,agosto 2025
+14-03-2025,Lisa Simpson 1,Blanqueamiento ambulatorio,"$75,000",TRANSFERENCIA,
+14-03-2025,Ígor,Operatoria,"$80,000",TRANSFERENCIA,
+12-03-2025,Mario Bros,Consulta,"$6,000",EFECTIVO,
+15-03-2025,Pebbles 1,Placa estabilizadora oclusal,"$100,000",EFECTIVO,
+15-03-2025,Winnie Pooh,Placa estabilizadora oclusal,"$100,000",EFECTIVO,
+17-03-2025,Ms. Pac-Man,Obra social,"$53,423",TRANSFERENCIA,
+18-03-2025,Sherlock Holmes,Consulta,"$5,000",TRANSFERENCIA,
+18-03-2025,Mickey Mouse,Consulta,"$5,000",EFECTIVO,
+19-03-2025,Minnie Mouse,Limpieza,"$35,000",TRANSFERENCIA,
+19-03-2025,Jane,Operatoria,"$35,000",EFECTIVO,
+21-03-2025,Donkey Kong,Consulta,"$5,000",TRANSFERENCIA,
+21-03-2025,Doña Cleotilde,Operatoria,"$70,000",TRANSFERENCIA,
+26-06-2025,Jerry,Consulta,"$10,000",EFECTIVO,
+26-06-2025,Aquaman,Operatoria,"$40,000",TRANSFERENCIA,
+27-03-2025,Ñoño,Blanqueamiento interno,"$40,000",TRANSFERENCIA,
+27-03-2025,Jerry 1,Obra social,"$12,033",TRANSFERENCIA,
+28-03-2025,Pablo Mármol,Consulta,"$5,000",EFECTIVO,
+28-03-2025,Foghorn Leghorn 1,Consulta,"$5,000",EFECTIVO,
+29-03-2025,Snoopy,Blanqueamiento ambulatorio,"$150,000",TRANSFERENCIA,
+01-04-2025,Don Ramón,Consulta,"$10,000",EFECTIVO,
+01-04-2025,Arenita,Consulta,"$5,000",EFECTIVO,
+01-04-2025,Bob Esponja,Endodoncia,"$100,000",TRANSFERENCIA,
+03-04-2025,Ned Flanders,Limpieza,"$53,996",TARJETA DE CREDITO,
+03-04-2025,Penny,Operatoria,"$53,996",TARJETA DE CREDITO,
+04-04-2025,Ikki,Operatoria,"$80,000",TRANSFERENCIA,
+07-04-2025,Plankton,Blanqueamiento interno,"$40,000",TRANSFERENCIA,
+07-04-2025,Hansel,Consulta,"$10,000",TRANSFERENCIA,
+14-04-2025,Reverendo Alegría,Consulta,"$15,000",EFECTIVO,
+14-04-2025,Goku,Obra social,"$179,128",TRANSFERENCIA,
+15-04-2025,Piglet,Placa estabilizadora oclusal,"$40,000",TRANSFERENCIA,
+15-04-2025,Plankton 1,Operatoria,"$40,000",TRANSFERENCIA,
+15-04-2025,Ms. Pac-Man 1,Limpieza,"$35,000",EFECTIVO,
+16-04-2025,Bob Esponja,Operatoria,"$40,000",TRANSFERENCIA,
+17-04-2025,Godínez 1,Operatoria,"$40,000",EFECTIVO,
+17-04-2025,He-Man,Operatoria,"$80,000",EFECTIVO,
+22-04-2025,Aquaman 1,Operatoria,"$70,000",TRANSFERENCIA,
+22-04-2025,Correcaminos,Corona,"$60,000",TRANSFERENCIA,
+23-04-2025,Milk,Consulta,"$5,000",TRANSFERENCIA,
+24-04-2025,Superman,Consulta,"$15,000",TRANSFERENCIA,
+24-04-2025,Blancanieves,Consulta,"$15,000",TRANSFERENCIA,
+25-04-2025,Edna Krabappel,Operatoria,"$40,000",TRANSFERENCIA,
+25-04-2025,Homero Simpson,Limpieza,"$35,000",EFECTIVO,
+30-04-2025,Correcaminos 1,Placa estabilizadora oclusal,"$50,000",EFECTIVO,
+30-04-2025,Gazú,Limpieza,"$40,000",EFECTIVO,
+05-05-2025,Gepetto,Limpieza,"$40,000",EFECTIVO,
+05-05-2025,Brain,Consulta,"$10,000",EFECTIVO,mayo 2025
+09-05-2025,Snoopy 1,Obra social,"$148,953",TRANSFERENCIA,
+13-05-2025,Donald Duck,Limpieza,"$40,000",TRANSFERENCIA,mayo 2025
+13-05-2025,Pluto,Consulta,"$10,000",TRANSFERENCIA,mayo 2025
+14-05-2025,Snoopy,Operatoria,"$130,000",TRANSFERENCIA,mayo 2025
+16-05-2025,Ms. Pac-Man,Obra social,"$60,000",TRANSFERENCIA,
+20-05-2025,Brain,Operatoria,"$85,000",EFECTIVO,mayo 2025
+20-05-2025,Donkey Kong,Consulta,"$10,000",TRANSFERENCIA,mayo 2025
+21-05-2025,Correcaminos 2,Operatoria,"$40,000",TRANSFERENCIA,mayo 2025
+27-05-2025,Rafa Gorgory,Placa estabilizadora oclusal,"$50,000",EFECTIVO,mayo 2025
+29-05-2025,Milhouse Van Houten,Obra social,"$218,600",TRANSFERENCIA,mayo 2025
+06-06-2025,Don Ramón,Operatoria,"$44,000",TRANSFERENCIA,junio 2025
+09-06-2025,Batman,Limpieza,"$40,000",EFECTIVO,junio 2025
+13-06-2025,Ms. Pac-Man,Obra social,"$89,700",TRANSFERENCIA,junio 2025
+16-06-2025,Bart Simpson,Operatoria,"$100,000",TRANSFERENCIA,junio 2025
+16-06-2025,Doctor Chapatín,Operatoria,"$80,000",EFECTIVO,junio 2025
+16-06-2025,Chita,Limpieza,"$40,000",EFECTIVO,junio 2025
+17-06-2025,Ms. Pac-Man,Obra social,"$37,104",TRANSFERENCIA,junio 2025
+18-06-2025,Dale,Endodoncia,"$75,000",TRANSFERENCIA,junio 2025
+24-06-2025,Marvin el Marciano,Placa estabilizadora oclusal,"$50,000",TRANSFERENCIA,junio 2025
+24-06-2025,Don Cangrejo,Placa estabilizadora oclusal,"$75,000",TRANSFERENCIA,junio 2025
+26-06-2025,Casper,Endodoncia,"$20,000",EFECTIVO,junio 2025
+07-07-2025,Milhouse Van Houten 1,Blanqueamiento ambulatorio,"$150,000",TRANSFERENCIA,julio 2025
+07-07-2025,Milhouse Van Houten 2,Limpieza,"$35,000",TRANSFERENCIA,julio 2025
+11-07-2025,Krillin,Operatoria,"$50,000",EFECTIVO,julio 2025
+15-07-2025,Ms. Pac-Man,Obra social,"$64,864.14",TRANSFERENCIA,julio 2025
+17-07-2025,Brain,Consulta,"$10,000",EFECTIVO,julio 2025
+17-07-2025,Donkey Kong 1,Limpieza,"$40,000",EFECTIVO,julio 2025
+18-07-2025,Bart Simpson,Placa estabilizadora oclusal,"$125,000",EFECTIVO,julio 2025
+18-07-2025,Aquaman 2,Operatoria,"$60,000",TRANSFERENCIA,julio 2025
+19-07-2025,Tails,Endodoncia,"$55,000",TRANSFERENCIA,julio 2025
+21-07-2025,Plankton 2,Operatoria,"$50,000",EFECTIVO,julio 2025
+22-07-2025,Brain,Operatoria,"$65,000",EFECTIVO,julio 2025
+22-07-2025,Arenita 1,Corona,"$150,000",TRANSFERENCIA,julio 2025
+23-07-2022,Doña Florinda,Operatoria,"$80,000",EFECTIVO,julio 2022
+25-07-2025,Seiya,Prótesis parcial removible,"$150,000",EFECTIVO,julio 2025
+29-07-2025,Ikki,Consulta,"$20,000",TRANSFERENCIA,julio 2025
+29-07-2025,Gretel,Consulta,"$15,000",EFECTIVO,julio 2025
+30-07-2025,Plankton 3,Limpieza,"$40,000",EFECTIVO,julio 2025
+30-07-2025,Astro,Consulta,"$20,000",EFECTIVO,julio 2025
+30-07-2025,Doña Cleotilde 1,Operatoria,"$80,000",EFECTIVO,julio 2025
+31-07-2025,Shiryu,Limpieza,"$40,000",EFECTIVO,julio 2025
+31-07-2025,Bowser,Placa estabilizadora oclusal,"$20,000",EFECTIVO,julio 2025
+31-07-2025,Princesa Peach,Placa estabilizadora oclusal,"$250,000",EFECTIVO,julio 2025
+04-08-2025,Bowser,Placa estabilizadora oclusal,"$105,000",EFECTIVO,agosto 2025
+04-08-2025,Astro,Limpieza,"$40,000",EFECTIVO,agosto 2025
+04-08-2025,Supergirl,Limpieza,"$40,000",EFECTIVO,agosto 2025
+05-08-2025,Krillin 1,Limpieza,"$60,000",TRANSFERENCIA,agosto 2025
+06-08-2025,Milhouse Van Houten 2,Operatoria,"$40,000",TRANSFERENCIA,agosto 2025
+11-08-2025,Gepetto 1,Consulta,"$10,000",EFECTIVO,agosto 2025
+14-08-2025,Pato Lucas,Corona,"$40,000",TRANSFERENCIA,agosto 2025
+18-08-2025,Doña Cleotilde 2,Obra social,"$22,738",TRANSFERENCIA,agosto 2025
+18-08-2025,Chip,Corona,"$50,000",TRANSFERENCIA,
+19-08-2025,Bulma,Obra social,"$42,678",TRANSFERENCIA,agosto 2025
+19-08-2025,Don Ramón,Placa estabilizadora oclusal,"$150,000",TRANSFERENCIA,agosto 2025
+21-08-2025,Olivia Oyl,Consulta,"$20,000",EFECTIVO,agosto 2025
+21-08-2025,Piglet 1,Operatoria,"$80,000",EFECTIVO,agosto 2025
+22-08-2025,Ikki,Placa estabilizadora oclusal,"$230,000",TRANSFERENCIA,agosto 2025
