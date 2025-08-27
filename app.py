@@ -77,21 +77,21 @@ class UserManager:
         if not os.path.exists(self.users_file):
             usuarios_default = {
                 "admin": {
-                    "password_hash": self.hash_password("admin123"),
+                    "password_hash": self.hash_password("Homero123"),
                     "nombre": "Dr. Administrador",
                     "email": "admin@dental.com",
                     "plan": "premium",
                     "fecha_registro": datetime.now().isoformat()
                 },
                 "demo1": {
-                    "password_hash": self.hash_password("demo123"),
+                    "password_hash": self.hash_password("Homero123"),
                     "nombre": "Dr. Demo Uno",
                     "email": "demo1@dental.com",
                     "plan": "trial",
                     "fecha_registro": datetime.now().isoformat()
                 },
                 "demo2": {
-                    "password_hash": self.hash_password("demo123"),
+                    "password_hash": self.hash_password("Homero123"),
                     "nombre": "Dra. Demo Dos",
                     "email": "demo2@dental.com",
                     "plan": "trial",
