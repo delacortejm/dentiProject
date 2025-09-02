@@ -1330,6 +1330,8 @@ def main():
         show_dashboard(data_manager, user_info)
     elif menu == "➕ Nueva Consulta":
         show_nueva_consulta(data_manager)
+    elif menu == "📋 Gestionar Consultas":
+        show_nueva_consulta(data_manager)
     elif menu == "🧮 Calculadora Inteligente":
         show_calculadora_inteligente(data_manager)
     elif menu == "💰 Análisis de Costos":
