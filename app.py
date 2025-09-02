@@ -1,4 +1,3 @@
-#v4.5
 # 1 - imports
 import streamlit as st
 import pandas as pd
@@ -1323,7 +1322,7 @@ def main():
         show_analisis_costos(data_manager, user_info)
     elif menu == "⚙️ Configuración Costos":
         show_configuracion_costos(data_manager)
-    elif menu == "📥 Migrar Datos":
+    elif menu == "📥 Importar Datos":
         show_migration_tool(data_manager)
 
 if __name__ == "__main__":
