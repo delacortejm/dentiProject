@@ -216,6 +216,18 @@ class DataManager:
         self.save_data()
         return nuevo_gasto
     
+    def delete_equipo(self, equipo_id):
+        """Eliminar equipo por ID"""
+        self.equipos = [e for e in self.equipos if e.get('id') != equipo_id]
+        self.save_data()
+        return True
+    
+    def delete_gasto_fijo(self, gasto_id):
+        """Eliminar gasto fijo por ID"""
+        self.gastos_fijos = [g for g in self.gastos_fijos if g.get('id') != gasto_id]
+        self.save_data()
+        return True
+    
     def calcular_costo_hora_real(self):
         """Cálculo integral del costo por hora basado en equipos y gastos fijos"""
         
@@ -303,15 +315,27 @@ def show_configuracion_costos(data_manager):
     with tab1:
         st.subheader("🔧 Equipamiento del Consultorio")
         
-        # Mostrar equipos actuales
+        # Mostrar equipos actuales con botones de eliminar
         if data_manager.equipos:
-            equipos_df = pd.DataFrame(data_manager.equipos)
-            equipos_display = equipos_df[['nombre', 'monto_compra_usd', 'años_vida_util', 'fecha_compra']].copy()
-            equipos_display['monto_compra_usd'] = equipos_display['monto_compra_usd'].apply(lambda x: f"${x:,.0f} USD")
-            equipos_display['fecha_compra'] = pd.to_datetime(equipos_display['fecha_compra']).dt.strftime('%d/%m/%Y')
-            equipos_display.columns = ['Equipo', 'Precio', 'Vida Útil', 'Fecha Compra']
+            st.markdown("**Equipos registrados:**")
             
-            st.dataframe(equipos_display, use_container_width=True)
+            for equipo in data_manager.equipos:
+                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
+                
+                with col1:
+                    st.write(f"**{equipo['nombre']}**")
+                with col2:
+                    st.write(f"${equipo['monto_compra_usd']:,.0f} USD")
+                with col3:
+                    st.write(f"{equipo['años_vida_util']} años")
+                with col4:
+                    fecha_compra = pd.to_datetime(equipo['fecha_compra']).strftime('%d/%m/%Y')
+                    st.write(fecha_compra)
+                with col5:
+                    if st.button("🗑️", key=f"del_equipo_{equipo['id']}", help="Eliminar equipo"):
+                        data_manager.delete_equipo(equipo['id'])
+                        st.success("Equipo eliminado")
+                        st.rerun()
         else:
             st.info("No hay equipos registrados aún.")
         
@@ -341,15 +365,24 @@ def show_configuracion_costos(data_manager):
     with tab2:
         st.subheader("🏢 Gastos Fijos Mensuales")
         
-        # Mostrar gastos actuales
+        # Mostrar gastos actuales con botones de eliminar
         if data_manager.gastos_fijos:
-            gastos_df = pd.DataFrame(data_manager.gastos_fijos)
-            gastos_display = gastos_df[['concepto', 'monto_mensual_ars']].copy()
-            gastos_display['monto_mensual_ars'] = gastos_display['monto_mensual_ars'].apply(lambda x: f"${x:,.0f} ARS")
-            gastos_display.columns = ['Concepto', 'Monto Mensual']
+            st.markdown("**Gastos fijos registrados:**")
             
-            st.dataframe(gastos_display, use_container_width=True)
+            for gasto in data_manager.gastos_fijos:
+                col1, col2, col3 = st.columns([4, 3, 1])
+                
+                with col1:
+                    st.write(f"**{gasto['concepto']}**")
+                with col2:
+                    st.write(f"${gasto['monto_mensual_ars']:,.0f} ARS/mes")
+                with col3:
+                    if st.button("🗑️", key=f"del_gasto_{gasto['id']}", help="Eliminar gasto"):
+                        data_manager.delete_gasto_fijo(gasto['id'])
+                        st.success("Gasto eliminado")
+                        st.rerun()
             
+            st.markdown("---")
             total_mensual = sum([g['monto_mensual_ars'] for g in data_manager.gastos_fijos if g.get('activo', True)])
             st.metric("💰 Total Gastos Fijos", f"${total_mensual:,.0f} ARS/mes")
         else:
