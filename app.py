@@ -1978,8 +1978,8 @@ class UserManager:
                 'consultas': [],
                 'config': {
                     'costo_por_hora': 29000,  # En pesos
-                    'margen_ganancia': 0.40,
-                    'region': 'Interior NOA/NEA'
+                    'margen_ganancia': 0.40
+#                    'region': 'Interior NOA/NEA'
                 }
             }
             
@@ -2020,8 +2020,8 @@ class DataManager:
     def get_default_config(self):
         return {
             'costo_por_hora': 29000,  # En pesos
-            'margen_ganancia': 0.40,
-            'region': 'Interior NOA/NEA'
+            'margen_ganancia': 0.40
+#            'region': 'Interior NOA/NEA'
         }
     
     def save_data(self):
@@ -2687,26 +2687,14 @@ def show_configuracion(data_manager):
                 step=5
             ) / 100
         
-        with col2:
-            st.write("Configuración Regional")
-            
-            nueva_region = st.selectbox(
-                "Su Región",
-                ["CABA", "GBA Norte", "GBA Sur", "La Plata", "Córdoba Capital", 
-                 "Rosario", "Mendoza", "Tucumán", "Interior Pampeano", 
-                 "Interior NOA/NEA", "Patagonia Norte", "Patagonia Sur"],
-                index=["CABA", "GBA Norte", "GBA Sur", "La Plata", "Córdoba Capital", 
-                       "Rosario", "Mendoza", "Tucumán", "Interior Pampeano", 
-                       "Interior NOA/NEA", "Patagonia Norte", "Patagonia Sur"].index(data_manager.config['region'])
-            )
         
         guardar = st.form_submit_button("Guardar Configuración", type="primary")
         
         if guardar:
             data_manager.config.update({
                 'costo_por_hora': nuevo_costo,
-                'margen_ganancia': nuevo_margen,
-                'region': nueva_region
+                'margen_ganancia': nuevo_margen
+#                'region': nueva_region
             })
             
             if data_manager.save_data():
