@@ -1,4 +1,4 @@
-# #V3.0 lite
+# v4.0
 # 1 - imports
 import streamlit as st
 import pandas as pd
@@ -128,29 +128,6 @@ class DataManager:
             self.data_file = "dental_data.json"
         self.user_id = user_id
         self.load_data()
-
-    def update_equipo(self, equipo_id, nombre, monto_usd, años_vida_util, fecha_compra, observaciones):
-        for i, equipo in enumerate(self.equipos):
-            if equipo['id'] == equipo_id:
-                self.equipos[i].update({
-                    'nombre': nombre,
-                    'monto_compra_usd': float(monto_usd),
-                    'años_vida_util': int(años_vida_util),
-                    'fecha_compra': fecha_compra.isoformat() if isinstance(fecha_compra, date) else fecha_compra,
-                    'observaciones': observaciones
-                })
-                break
-        self.save_data()
-
-    def update_gasto_fijo(self, gasto_id, concepto, monto_mensual_ars):
-        for i, gasto in enumerate(self.gastos_fijos):
-            if gasto['id'] == gasto_id:
-                self.gastos_fijos[i].update({
-                    'concepto': concepto,
-                    'monto_mensual_ars': float(monto_mensual_ars)
-                })
-                break
-        self.save_data()
     
     def load_data(self):
         if os.path.exists(self.data_file):
@@ -343,7 +320,7 @@ def show_configuracion_costos(data_manager):
             st.markdown("**Equipos registrados:**")
             
             for equipo in data_manager.equipos:
-                col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
+                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
                 
                 with col1:
                     st.write(f"**{equipo['nombre']}**")
@@ -355,10 +332,6 @@ def show_configuracion_costos(data_manager):
                     fecha_compra = pd.to_datetime(equipo['fecha_compra']).strftime('%d/%m/%Y')
                     st.write(fecha_compra)
                 with col5:
-                    if st.button("✏️", key=f"edit_equipo_{equipo['id']}", help="Editar equipo"):
-                        st.session_state[f'editing_equipo_{equipo["id"]}'] = True
-                        st.rerun()
-                with col6:
                     if st.button("🗑️", key=f"del_equipo_{equipo['id']}", help="Eliminar equipo"):
                         data_manager.delete_equipo(equipo['id'])
                         st.success("Equipo eliminado")
@@ -385,10 +358,6 @@ def show_configuracion_costos(data_manager):
                 if nombre_equipo and monto_usd > 0:
                     data_manager.add_equipo(nombre_equipo, monto_usd, años_vida, fecha_compra, observaciones)
                     st.success("✅ Equipo agregado correctamente")
-                    # Limpiar session_state de los campos del formulario
-                    for key in st.session_state.keys():
-                        if key.startswith('FormSubmitter:nuevo_equipo'):
-                            del st.session_state[key]
                     st.rerun()
                 else:
                     st.error("❌ Complete los campos obligatorios")
@@ -433,10 +402,6 @@ def show_configuracion_costos(data_manager):
                 if concepto and monto_mensual > 0:
                     data_manager.add_gasto_fijo(concepto, monto_mensual)
                     st.success("✅ Gasto agregado correctamente")
-                    # Limpiar session_state de los campos del formulario
-                    for key in st.session_state.keys():
-                        if key.startswith('FormSubmitter:nuevo_gasto'):
-                            del st.session_state[key]
                     st.rerun()
                 else:
                     st.error("❌ Complete los campos obligatorios")
@@ -646,6 +611,231 @@ def show_dashboard(data_manager, user_info):
     else:
         st.info("No hay consultas registradas aún.")
 
+def show_calculadora_inteligente(data_manager):
+    """Calculadora inteligente con análisis de costos automático"""
+    st.title("🧮 Calculadora Inteligente de Precios")
+    
+    # Análisis de costos disponibles
+    costos_analysis = data_manager.calcular_costo_hora_real()
+    tiene_costos_configurados = costos_analysis['costo_total_anual'] > 0
+    
+    if tiene_costos_configurados:
+        st.success(f"✅ Usando su costo real calculado: ${costos_analysis['costo_hora_ars']:,.0f} ARS/hora")
+    else:
+        st.warning("⚠️ Configure equipos y gastos fijos para cálculos más precisos")
+    
+    # Formulario principal
+    with st.form("calculadora_inteligente"):
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.subheader("📋 Parámetros del Tratamiento")
+            
+            # Selección de tratamiento con opción personalizada
+            lista_tratamientos = [
+                "Consulta", "Limpieza", "Operatoria Simple", "Operatoria Compleja", 
+                "Endodoncia", "Corona", "Extracción Simple", "Extracción Compleja", "Otro"
+            ]
+            
+            tratamiento_base = st.selectbox("Tipo de Tratamiento", lista_tratamientos)
+            
+            if tratamiento_base == "Otro":
+                tratamiento_seleccionado = st.text_input(
+                    "Especificar tratamiento:",
+                    placeholder="Ej: Blanqueamiento, Implante, etc."
+                )
+                if not tratamiento_seleccionado:
+                    tratamiento_seleccionado = "Personalizado"
+            else:
+                tratamiento_seleccionado = tratamiento_base
+            
+            # Tiempos estimados por tratamiento
+            tiempos_estandar = {
+                "Consulta": 0.5,
+                "Limpieza": 1.0,
+                "Operatoria Simple": 1.5,
+                "Operatoria Compleja": 2.5,
+                "Endodoncia": 3.0,
+                "Corona": 2.0,
+                "Extracción Simple": 0.75,
+                "Extracción Compleja": 2.0,
+                "Personalizado": 1.0
+            }
+            
+            tiempo_sugerido = tiempos_estandar.get(tratamiento_seleccionado, 1.0)
+            
+            time_hours = st.number_input(
+                "Tiempo estimado (horas)",
+                min_value=0.1,
+                max_value=8.0,
+                value=tiempo_sugerido,
+                step=0.25,
+                help="Tiempo que demora realizar el tratamiento"
+            )
+            
+            materials_ars = st.number_input(
+                "Costo de materiales (ARS)",
+                min_value=0.0,
+                value=5000.0,
+                step=1000.0,
+                help="Costo total de insumos para este tratamiento"
+            )
+        
+        with col2:
+            st.subheader("⚙️ Configuración de Costos")
+            
+            # Toggle para usar costo automático o manual
+            if tiene_costos_configurados:
+                usar_costo_real = st.checkbox(
+                    "Usar costo real calculado",
+                    value=True,
+                    help="Basado en sus equipos y gastos fijos configurados"
+                )
+                
+                if usar_costo_real:
+                    costo_hora_usar = costos_analysis['costo_hora_ars']
+                    st.metric("Costo/Hora Real", f"${costo_hora_usar:,.0f} ARS")
+                else:
+                    costo_hora_usar = st.number_input(
+                        "Costo por hora manual (ARS)",
+                        min_value=5000.0,
+                        value=29000.0,
+                        step=1000.0
+                    )
+                    st.warning("Usando costo manual en lugar del calculado")
+            else:
+                usar_costo_real = False
+                costo_hora_usar = st.number_input(
+                    "Costo por hora (ARS)",
+                    min_value=5000.0,
+                    value=29000.0,
+                    step=1000.0,
+                    help="Configure equipos y gastos para cálculo automático"
+                )
+        
+        calcular = st.form_submit_button("🧮 Calcular Recomendaciones", type="primary")
+        
+        if calcular:
+            # Cálculo base
+            costo_mano_obra = time_hours * costo_hora_usar
+            costo_total = costo_mano_obra + materials_ars
+            
+            # Recomendaciones con diferentes márgenes
+            margenes = {
+                "Supervivencia (25%)": 0.25,
+                "Competitivo (50%)": 0.50,
+                "Premium (75%)": 0.75,
+                "Especialista (100%)": 1.00
+            }
+            
+            st.markdown("---")
+            st.subheader("💰 Análisis de Costos")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Mano de Obra", f"${costo_mano_obra:,.0f} ARS")
+            with col2:
+                st.metric("Materiales", f"${materials_ars:,.0f} ARS")
+            with col3:
+                st.metric("Costo Total", f"${costo_total:,.0f} ARS")
+            
+            st.subheader("📊 Recomendaciones de Precios")
+            
+            recomendaciones = []
+            for nombre_margen, porcentaje_margen in margenes.items():
+                precio_final = costo_total * (1 + porcentaje_margen)
+                ganancia = precio_final - costo_total
+                
+                recomendaciones.append({
+                    "Margen": nombre_margen,
+                    "Precio": f"${precio_final:,.0f} ARS",
+                    "Ganancia": f"${ganancia:,.0f} ARS",
+                    "Valor": precio_final
+                })
+            
+            # Mostrar recomendaciones en columnas
+            col1, col2 = st.columns(2)
+            
+            for i, rec in enumerate(recomendaciones):
+                col = col1 if i % 2 == 0 else col2
+                
+                with col:
+                    # Color según el margen
+                    if "Supervivencia" in rec["Margen"]:
+                        color = "🟡"
+                    elif "Competitivo" in rec["Margen"]:
+                        color = "🟢"
+                    elif "Premium" in rec["Margen"]:
+                        color = "🔵"
+                    else:  # Especialista
+                        color = "🟣"
+                    
+                    recomendado = "← RECOMENDADO" if "Competitivo" in rec["Margen"] else ""
+                    
+                    st.markdown(f"""
+                    **{color} {rec["Margen"]} {recomendado}**
+                    - Precio: {rec["Precio"]}
+                    - Ganancia: {rec["Ganancia"]}
+                    """)
+            
+            # Búsqueda en registros históricos
+            st.subheader("📋 Histórico de Este Tratamiento")
+            
+            if not data_manager.consultas.empty:
+                # Buscar tratamientos exactos o similares
+                tratamientos_exactos = data_manager.consultas[
+                    data_manager.consultas['tratamiento'].str.lower() == tratamiento_seleccionado.lower()
+                ]
+                
+                if not tratamientos_exactos.empty:
+                    st.markdown("**Registros anteriores encontrados:**")
+                    
+                    # Mostrar últimos 5 registros
+                    ultimos_registros = tratamientos_exactos.tail(5).sort_values('fecha', ascending=False)
+                    
+                    for _, registro in ultimos_registros.iterrows():
+                        fecha_registro = pd.to_datetime(registro['fecha']).strftime('%d/%m/%Y')
+                        
+                        col1, col2, col3 = st.columns([2, 2, 2])
+                        with col1:
+                            st.write(f"**{registro['paciente']}**")
+                        with col2:
+                            st.write(f"${registro['monto_ars']:,.0f} ARS")
+                        with col3:
+                            st.write(fecha_registro)
+                    
+                    # Estadísticas del histórico
+                    precio_promedio = tratamientos_exactos['monto_ars'].mean()
+                    precio_ultimo = tratamientos_exactos.iloc[-1]['monto_ars']
+                    
+                    st.markdown("---")
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric("Precio Promedio Histórico", f"${precio_promedio:,.0f} ARS")
+                    with col2:
+                        st.metric("Último Precio Cobrado", f"${precio_ultimo:,.0f} ARS")
+                    with col3:
+                        total_realizados = len(tratamientos_exactos)
+                        st.metric("Veces Realizadas", total_realizados)
+                    
+                    # Comparación con recomendaciones actuales
+                    precio_competitivo = costo_total * 1.5
+                    
+                    if precio_ultimo < costo_total:
+                        st.error(f"⚠️ Su último precio (${precio_ultimo:,.0f}) estaba por debajo del costo actual")
+                    elif precio_ultimo < precio_competitivo:
+                        diferencia = precio_competitivo - precio_ultimo
+                        st.warning(f"💡 Puede aumentar ${diferencia:,.0f} respecto al último precio cobrado")
+                    else:
+                        st.success("✅ Su último precio estaba bien posicionado")
+                        
+                else:
+                    st.info(f"No se encontraron registros anteriores de '{tratamiento_seleccionado}'")
+                    st.info("Una vez que registre este tratamiento, aparecerá en el histórico para futuras consultas")
+            else:
+                st.info("No hay consultas registradas aún para mostrar histórico")
+
 def show_nueva_consulta(data_manager):
     st.subheader("➕ Registrar Nueva Consulta")
     
@@ -750,7 +940,7 @@ def main():
         """, unsafe_allow_html=True)
         
         menu = st.selectbox("📋 Menú Principal", 
-                           ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Análisis de Costos", "⚙️ Configuración Costos"])
+                           ["🏠 Dashboard", "➕ Nueva Consulta", "🧮 Calculadora Inteligente", "💰 Análisis de Costos", "⚙️ Configuración Costos"])
         
         st.markdown("---")
         resumen = data_manager.get_resumen()
@@ -768,6 +958,8 @@ def main():
         show_dashboard(data_manager, user_info)
     elif menu == "➕ Nueva Consulta":
         show_nueva_consulta(data_manager)
+    elif menu == "🧮 Calculadora Inteligente":
+        show_calculadora_inteligente(data_manager)
     elif menu == "💰 Análisis de Costos":
         show_analisis_costos(data_manager, user_info)
     elif menu == "⚙️ Configuración Costos":
@@ -775,6 +967,781 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# # #V3.0 lite
+# # 1 - imports
+# import streamlit as st
+# import pandas as pd
+# import plotly.express as px
+# import plotly.graph_objects as go
+# from datetime import datetime, date
+# import json
+# import os
+# import re
+# import hashlib
+# from typing import Dict, List, Tuple
+# import numpy as np
+
+# # 2 - Configuración de la página
+# st.set_page_config(
+#     page_title="Manny App - Sistema de Gestión de Consultorios de Salud",
+#     page_icon="🏥",
+#     layout="wide",
+#     initial_sidebar_state="expanded"
+# )
+
+# # 3 - CSS personalizado
+# st.markdown("""
+# <style>
+#     .main-header {
+#         font-size: 2.5rem;
+#         color: #1e3a8a;
+#         text-align: center;
+#         margin-bottom: 2rem;
+#     }
+#     .metric-card {
+#         background: linear-gradient(90deg, #3b82f6 0%, #1e40af 100%);
+#         padding: 1rem;
+#         border-radius: 0.5rem;
+#         color: white;
+#         text-align: center;
+#         margin: 0.5rem 0;
+#     }
+#     .cost-analysis-card {
+#         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+#         padding: 1.5rem;
+#         border-radius: 1rem;
+#         color: white;
+#         margin: 1rem 0;
+#     }
+# </style>
+# """, unsafe_allow_html=True)
+
+# # 4 - UserManager
+# class UserManager:
+#     def __init__(self):
+#         self.users_file = "usuarios.json"
+#         self.data_folder = "data"
+#         self.init_system()
+    
+#     def init_system(self):
+#         if not os.path.exists(self.data_folder):
+#             os.makedirs(self.data_folder)
+        
+#         if not os.path.exists(self.users_file):
+#             usuarios_default = {
+#                 "admin": {
+#                     "password_hash": self.hash_password("Homero123"),
+#                     "nombre": "Dr. Administrador",
+#                     "email": "admin@manny.com",
+#                     "especialidad": "odontologia",
+#                     "plan": "premium",
+#                     "fecha_registro": datetime.now().isoformat()
+#                 }
+#             }
+#             self.save_users(usuarios_default)
+#             for user_id in usuarios_default.keys():
+#                 self.create_user_folder(user_id)
+    
+#     def hash_password(self, password):
+#         return hashlib.sha256(password.encode()).hexdigest()
+    
+#     def load_users(self):
+#         try:
+#             with open(self.users_file, 'r', encoding='utf-8') as f:
+#                 return json.load(f)
+#         except:
+#             return {}
+    
+#     def save_users(self, users_data):
+#         with open(self.users_file, 'w', encoding='utf-8') as f:
+#             json.dump(users_data, f, ensure_ascii=False, indent=2)
+    
+#     def validate_user(self, username, password):
+#         users = self.load_users()
+#         if username not in users:
+#             return False, "Usuario no encontrado"
+#         password_hash = self.hash_password(password)
+#         if users[username]["password_hash"] != password_hash:
+#             return False, "Contraseña incorrecta"
+#         return True, "Login exitoso"
+    
+#     def get_user_info(self, username):
+#         users = self.load_users()
+#         return users.get(username, {})
+    
+#     def create_user_folder(self, user_id):
+#         user_folder = os.path.join(self.data_folder, user_id)
+#         if not os.path.exists(user_folder):
+#             os.makedirs(user_folder)
+#             initial_data = {
+#                 'consultas': [],
+#                 'config': {
+#                     'costo_por_hora': 29000,
+#                     'margen_ganancia': 0.40,
+#                     'tipo_cambio_usd_ars': 1335.0,
+#                     'horas_anuales_trabajadas': 1100
+#                 },
+#                 'equipos': [],
+#                 'gastos_fijos': []
+#             }
+#             data_file = os.path.join(user_folder, 'dental_data.json')
+#             with open(data_file, 'w', encoding='utf-8') as f:
+#                 json.dump(initial_data, f, ensure_ascii=False, indent=2, default=str)
+
+# # 5 - DataManager expandido con análisis de costos
+# class DataManager:
+#     def __init__(self, user_id=None):
+#         if user_id:
+#             self.data_file = os.path.join("data", user_id, "dental_data.json")
+#         else:
+#             self.data_file = "dental_data.json"
+#         self.user_id = user_id
+#         self.load_data()
+
+#     def update_equipo(self, equipo_id, nombre, monto_usd, años_vida_util, fecha_compra, observaciones):
+#         for i, equipo in enumerate(self.equipos):
+#             if equipo['id'] == equipo_id:
+#                 self.equipos[i].update({
+#                     'nombre': nombre,
+#                     'monto_compra_usd': float(monto_usd),
+#                     'años_vida_util': int(años_vida_util),
+#                     'fecha_compra': fecha_compra.isoformat() if isinstance(fecha_compra, date) else fecha_compra,
+#                     'observaciones': observaciones
+#                 })
+#                 break
+#         self.save_data()
+
+#     def update_gasto_fijo(self, gasto_id, concepto, monto_mensual_ars):
+#         for i, gasto in enumerate(self.gastos_fijos):
+#             if gasto['id'] == gasto_id:
+#                 self.gastos_fijos[i].update({
+#                     'concepto': concepto,
+#                     'monto_mensual_ars': float(monto_mensual_ars)
+#                 })
+#                 break
+#         self.save_data()
+    
+#     def load_data(self):
+#         if os.path.exists(self.data_file):
+#             try:
+#                 with open(self.data_file, 'r', encoding='utf-8') as f:
+#                     data = json.load(f)
+#                     self.consultas = pd.DataFrame(data.get('consultas', []))
+#                     self.config = data.get('config', self.get_default_config())
+#                     self.equipos = data.get('equipos', [])
+#                     self.gastos_fijos = data.get('gastos_fijos', [])
+#             except Exception as e:
+#                 st.error(f"Error cargando datos: {e}")
+#                 self.init_default_data()
+#         else:
+#             self.init_default_data()
+    
+#     def init_default_data(self):
+#         self.consultas = pd.DataFrame(columns=['fecha', 'paciente', 'tratamiento', 'monto_ars', 'medio_pago'])
+#         self.config = self.get_default_config()
+#         self.equipos = []
+#         self.gastos_fijos = []
+    
+#     def get_default_config(self):
+#         return {
+#             'costo_por_hora': 29000,
+#             'margen_ganancia': 0.40,
+#             'tipo_cambio_usd_ars': 1335.0,
+#             'horas_anuales_trabajadas': 1100
+#         }
+    
+#     def save_data(self):
+#         try:
+#             os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
+#             data = {
+#                 'consultas': self.consultas.to_dict('records'),
+#                 'config': self.config,
+#                 'equipos': self.equipos,
+#                 'gastos_fijos': self.gastos_fijos
+#             }
+#             with open(self.data_file, 'w', encoding='utf-8') as f:
+#                 json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+#             return True
+#         except Exception as e:
+#             st.error(f"Error guardando datos: {e}")
+#             return False
+    
+#     def add_consulta(self, paciente, tratamiento, monto_ars, medio_pago):
+#         nueva_consulta = {
+#             'fecha': datetime.now().isoformat(),
+#             'paciente': paciente,
+#             'tratamiento': tratamiento,
+#             'monto_ars': monto_ars,
+#             'medio_pago': medio_pago
+#         }
+#         if self.consultas.empty:
+#             self.consultas = pd.DataFrame([nueva_consulta])
+#         else:
+#             self.consultas = pd.concat([self.consultas, pd.DataFrame([nueva_consulta])], ignore_index=True)
+#         self.save_data()
+#         return nueva_consulta
+    
+#     def add_equipo(self, nombre, monto_usd, años_vida_util, fecha_compra, observaciones=""):
+#         nuevo_equipo = {
+#             'id': len(self.equipos) + 1,
+#             'nombre': nombre,
+#             'monto_compra_usd': float(monto_usd),
+#             'años_vida_util': int(años_vida_util),
+#             'fecha_compra': fecha_compra.isoformat() if isinstance(fecha_compra, date) else fecha_compra,
+#             'observaciones': observaciones,
+#             'activo': True,
+#             'fecha_creacion': datetime.now().isoformat()
+#         }
+#         self.equipos.append(nuevo_equipo)
+#         self.save_data()
+#         return nuevo_equipo
+    
+#     def add_gasto_fijo(self, concepto, monto_mensual_ars):
+#         nuevo_gasto = {
+#             'id': len(self.gastos_fijos) + 1,
+#             'concepto': concepto,
+#             'monto_mensual_ars': float(monto_mensual_ars),
+#             'activo': True,
+#             'fecha_creacion': datetime.now().isoformat()
+#         }
+#         self.gastos_fijos.append(nuevo_gasto)
+#         self.save_data()
+#         return nuevo_gasto
+    
+#     def delete_equipo(self, equipo_id):
+#         """Eliminar equipo por ID"""
+#         self.equipos = [e for e in self.equipos if e.get('id') != equipo_id]
+#         self.save_data()
+#         return True
+    
+#     def delete_gasto_fijo(self, gasto_id):
+#         """Eliminar gasto fijo por ID"""
+#         self.gastos_fijos = [g for g in self.gastos_fijos if g.get('id') != gasto_id]
+#         self.save_data()
+#         return True
+    
+#     def calcular_costo_hora_real(self):
+#         """Cálculo integral del costo por hora basado en equipos y gastos fijos"""
+        
+#         # 1. Costos de equipos (amortización con inflación 4% anual)
+#         costo_equipos_anual_usd = 0
+#         for equipo in self.equipos:
+#             if equipo.get('activo', True):
+#                 # Amortización con inflación
+#                 costo_reposicion = equipo['monto_compra_usd'] * (1.04 ** equipo['años_vida_util'])
+#                 amortizacion_anual = costo_reposicion / equipo['años_vida_util']
+#                 costo_equipos_anual_usd += amortizacion_anual
+        
+#         # Convertir USD a ARS
+#         tipo_cambio = self.config.get('tipo_cambio_usd_ars', 1335)
+#         costo_equipos_anual_ars = costo_equipos_anual_usd * tipo_cambio
+        
+#         # 2. Gastos fijos anuales (ARS)
+#         costo_gastos_anual_ars = sum([
+#             gasto['monto_mensual_ars'] * 12 
+#             for gasto in self.gastos_fijos 
+#             if gasto.get('activo', True)
+#         ])
+        
+#         # 3. Cálculo final
+#         costo_total_anual = costo_equipos_anual_ars + costo_gastos_anual_ars
+#         horas_anuales = self.config.get('horas_anuales_trabajadas', 1100)
+        
+#         costo_hora = costo_total_anual / horas_anuales if horas_anuales > 0 else 0
+        
+#         return {
+#             'costo_hora_ars': costo_hora,
+#             'costo_equipos_anual': costo_equipos_anual_ars,
+#             'costo_gastos_anual': costo_gastos_anual_ars,
+#             'costo_total_anual': costo_total_anual,
+#             'horas_anuales': horas_anuales,
+#             'cantidad_equipos': len([e for e in self.equipos if e.get('activo', True)]),
+#             'cantidad_gastos': len([g for g in self.gastos_fijos if g.get('activo', True)])
+#         }
+    
+#     def get_resumen(self):
+#         if self.consultas.empty:
+#             return {
+#                 'total_consultas': 0,
+#                 'ingreso_total': 0,
+#                 'promedio_consulta': 0,
+#                 'tratamiento_popular': 'N/A',
+#                 'ingresos_mes': 0
+#             }
+        
+#         if not self.consultas.empty:
+#             self.consultas['fecha'] = pd.to_datetime(self.consultas['fecha'])
+        
+#         total_consultas = len(self.consultas)
+#         ingreso_total = self.consultas['monto_ars'].sum()
+#         promedio_consulta = ingreso_total / total_consultas if total_consultas > 0 else 0
+        
+#         tratamiento_popular = 'N/A'
+#         if not self.consultas.empty:
+#             tratamientos = self.consultas['tratamiento'].value_counts()
+#             if not tratamientos.empty:
+#                 tratamiento_popular = tratamientos.index[0]
+        
+#         fecha_actual = datetime.now()
+#         mes_actual = self.consultas[
+#             (self.consultas['fecha'].dt.month == fecha_actual.month) &
+#             (self.consultas['fecha'].dt.year == fecha_actual.year)
+#         ]
+#         ingresos_mes = mes_actual['monto_ars'].sum() if not mes_actual.empty else 0
+        
+#         return {
+#             'total_consultas': total_consultas,
+#             'ingreso_total': round(ingreso_total, 0),
+#             'promedio_consulta': round(promedio_consulta, 0),
+#             'tratamiento_popular': tratamiento_popular,
+#             'ingresos_mes': round(ingresos_mes, 0)
+#         }
+
+# # 6 - Funciones de análisis de costos
+# def show_configuracion_costos(data_manager):
+#     """Página de configuración de costos"""
+#     st.title("⚙️ Configuración de Costos")
+    
+#     tab1, tab2, tab3 = st.tabs(["🔧 Equipos", "🏢 Gastos Fijos", "⚙️ Parámetros"])
+    
+#     with tab1:
+#         st.subheader("🔧 Equipamiento del Consultorio")
+        
+#         # Mostrar equipos actuales con botones de eliminar
+#         if data_manager.equipos:
+#             st.markdown("**Equipos registrados:**")
+            
+#             for equipo in data_manager.equipos:
+#                 col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
+                
+#                 with col1:
+#                     st.write(f"**{equipo['nombre']}**")
+#                 with col2:
+#                     st.write(f"${equipo['monto_compra_usd']:,.0f} USD")
+#                 with col3:
+#                     st.write(f"{equipo['años_vida_util']} años")
+#                 with col4:
+#                     fecha_compra = pd.to_datetime(equipo['fecha_compra']).strftime('%d/%m/%Y')
+#                     st.write(fecha_compra)
+#                 with col5:
+#                     if st.button("✏️", key=f"edit_equipo_{equipo['id']}", help="Editar equipo"):
+#                         st.session_state[f'editing_equipo_{equipo["id"]}'] = True
+#                         st.rerun()
+#                 with col6:
+#                     if st.button("🗑️", key=f"del_equipo_{equipo['id']}", help="Eliminar equipo"):
+#                         data_manager.delete_equipo(equipo['id'])
+#                         st.success("Equipo eliminado")
+#                         st.rerun()
+#         else:
+#             st.info("No hay equipos registrados aún.")
+        
+#         # Formulario para nuevo equipo
+#         with st.form("nuevo_equipo"):
+#             st.markdown("**Agregar Nuevo Equipo**")
+            
+#             col1, col2 = st.columns(2)
+#             with col1:
+#                 nombre_equipo = st.text_input("Nombre del Equipo *", placeholder="Ej: Sillón Dental")
+#                 monto_usd = st.number_input("Precio pagado (USD) *", min_value=0.0, step=100.0, value=1000.0)
+            
+#             with col2:
+#                 años_vida = st.selectbox("Vida Útil (años)", [3, 5, 7, 8, 10], index=1)
+#                 fecha_compra = st.date_input("Fecha de Compra", value=date.today())
+            
+#             observaciones = st.text_area("Observaciones (opcional)")
+            
+#             if st.form_submit_button("💾 Agregar Equipo", type="primary"):
+#                 if nombre_equipo and monto_usd > 0:
+#                     data_manager.add_equipo(nombre_equipo, monto_usd, años_vida, fecha_compra, observaciones)
+#                     st.success("✅ Equipo agregado correctamente")
+#                     # Limpiar session_state de los campos del formulario
+#                     st.rerun()
+#                 else:
+#                     st.error("❌ Complete los campos obligatorios")
+    
+#     with tab2:
+#         st.subheader("🏢 Gastos Fijos Mensuales")
+        
+#         # Mostrar gastos actuales con botones de eliminar
+#         if data_manager.gastos_fijos:
+#             st.markdown("**Gastos fijos registrados:**")
+            
+#             for gasto in data_manager.gastos_fijos:
+#                 col1, col2, col3 = st.columns([4, 3, 1])
+                
+#                 with col1:
+#                     st.write(f"**{gasto['concepto']}**")
+#                 with col2:
+#                     st.write(f"${gasto['monto_mensual_ars']:,.0f} ARS/mes")
+#                 with col3:
+#                     if st.button("🗑️", key=f"del_gasto_{gasto['id']}", help="Eliminar gasto"):
+#                         data_manager.delete_gasto_fijo(gasto['id'])
+#                         st.success("Gasto eliminado")
+#                         st.rerun()
+            
+#             st.markdown("---")
+#             total_mensual = sum([g['monto_mensual_ars'] for g in data_manager.gastos_fijos if g.get('activo', True)])
+#             st.metric("💰 Total Gastos Fijos", f"${total_mensual:,.0f} ARS/mes")
+#         else:
+#             st.info("No hay gastos fijos registrados aún.")
+        
+#         # Formulario para nuevo gasto
+#         with st.form("nuevo_gasto"):
+#             st.markdown("**Agregar Nuevo Gasto Fijo**")
+            
+#             col1, col2 = st.columns(2)
+#             with col1:
+#                 concepto = st.text_input("Concepto *", placeholder="Ej: Alquiler")
+#             with col2:
+#                 monto_mensual = st.number_input("Monto mensual (ARS) *", min_value=0.0, step=1000.0, value=50000.0)
+            
+#             if st.form_submit_button("💾 Agregar Gasto", type="primary"):
+#                 if concepto and monto_mensual > 0:
+#                     data_manager.add_gasto_fijo(concepto, monto_mensual)
+#                     st.success("✅ Gasto agregado correctamente")
+#                     # Limpiar session_state de los campos del formulario
+#                     for key in st.session_state.keys():
+#                         if key.startswith('FormSubmitter:nuevo_gasto'):
+#                             del st.session_state[key]
+#                     st.rerun()
+#                 else:
+#                     st.error("❌ Complete los campos obligatorios")
+    
+#     with tab3:
+#         st.subheader("⚙️ Parámetros de Trabajo")
+        
+#         with st.form("parametros"):
+#             col1, col2 = st.columns(2)
+            
+#             with col1:
+#                 nuevas_horas = st.number_input(
+#                     "Horas anuales trabajadas",
+#                     min_value=500,
+#                     max_value=2000,
+#                     value=data_manager.config.get('horas_anuales_trabajadas', 1100),
+#                     step=50,
+#                     help="Horas productivas anuales (descontando vacaciones, días no trabajados, etc.)"
+#                 )
+                
+#                 nuevo_margen = st.slider(
+#                     "Margen de ganancia objetivo (%)",
+#                     min_value=10,
+#                     max_value=200,
+#                     value=int(data_manager.config.get('margen_ganancia', 0.4) * 100),
+#                     step=5
+#                 ) / 100
+            
+#             with col2:
+#                 nuevo_tc = st.number_input(
+#                     "Tipo de cambio USD/ARS",
+#                     min_value=100.0,
+#                     max_value=5000.0,
+#                     value=data_manager.config.get('tipo_cambio_usd_ars', 1335.0),
+#                     step=10.0,
+#                     help="Para convertir equipos en USD a ARS"
+#                 )
+            
+#             if st.form_submit_button("💾 Actualizar Parámetros", type="primary"):
+#                 data_manager.config.update({
+#                     'horas_anuales_trabajadas': nuevas_horas,
+#                     'margen_ganancia': nuevo_margen,
+#                     'tipo_cambio_usd_ars': nuevo_tc
+#                 })
+#                 data_manager.save_data()
+#                 st.success("✅ Parámetros actualizados exitosamente")
+#                 st.rerun()
+
+# def show_analisis_costos(data_manager, user_info):
+#     """Página de análisis de costos integral"""
+#     st.title("💰 Análisis de Costos y Rentabilidad")
+    
+#     especialidad = user_info.get('especialidad', 'odontologia')
+#     especialidad_emoji = {
+#         'odontologia': '🦷',
+#         'dermatologia': '🧴',
+#         'kinesiologia': '🏃‍♂️'
+#     }.get(especialidad, '🏥')
+    
+#     st.markdown(f"### {especialidad_emoji} {especialidad.title()}")
+    
+#     # Calcular métricas de costos
+#     costos_analysis = data_manager.calcular_costo_hora_real()
+    
+#     # Verificar si tiene costos configurados
+#     if costos_analysis['costo_total_anual'] == 0:
+#         st.warning("⚠️ No tiene equipos ni gastos fijos configurados. Vaya a 'Configuración Costos' para comenzar.")
+#         st.info("💡 El análisis de costos le permitirá conocer su costo real por hora y optimizar sus precios.")
+#         return
+    
+#     # Métricas principales
+#     col1, col2, col3, col4 = st.columns(4)
+    
+#     with col1:
+#         st.metric("💰 Costo Real/Hora", f"${costos_analysis['costo_hora_ars']:,.0f} ARS")
+    
+#     with col2:
+#         precio_minimo = costos_analysis['costo_hora_ars'] * 1.5  # 50% margen
+#         st.metric("📊 Precio Mín. (50%)", f"${precio_minimo:,.0f} ARS")
+    
+#     with col3:
+#         precio_optimo = costos_analysis['costo_hora_ars'] * 2  # 100% margen
+#         st.metric("🎯 Precio Óptimo (100%)", f"${precio_optimo:,.0f} ARS")
+    
+#     with col4:
+#         resumen = data_manager.get_resumen()
+#         if resumen['promedio_consulta'] > 0:
+#             consultas_breakeven = costos_analysis['costo_total_anual'] / resumen['promedio_consulta']
+#             st.metric("⚖️ Consultas Break-Even", f"{consultas_breakeven:,.0f} /año")
+#         else:
+#             st.metric("⚖️ Consultas Break-Even", "Sin datos")
+    
+#     # Gráfico de composición de costos
+#     if costos_analysis['costo_total_anual'] > 0:
+#         st.subheader("📊 Composición de Costos Anuales")
+        
+#         costos_data = pd.DataFrame([
+#             {"Categoría": "Equipos (Amortización)", "Monto": costos_analysis['costo_equipos_anual']},
+#             {"Categoría": "Gastos Fijos", "Monto": costos_analysis['costo_gastos_anual']}
+#         ])
+        
+#         col1, col2 = st.columns([2, 1])
+        
+#         with col1:
+#             fig_costos = px.pie(
+#                 costos_data, 
+#                 values='Monto', 
+#                 names='Categoría',
+#                 title=f"Total Anual: ${costos_analysis['costo_total_anual']:,.0f} ARS",
+#                 color_discrete_sequence=['#3b82f6', '#ef4444']
+#             )
+#             st.plotly_chart(fig_costos, use_container_width=True)
+        
+#         with col2:
+#             st.markdown("**📈 Resumen de Configuración**")
+#             st.metric("🔧 Equipos", costos_analysis['cantidad_equipos'])
+#             st.metric("🏢 Gastos Fijos", costos_analysis['cantidad_gastos'])
+#             st.metric("⏰ Horas Anuales", costos_analysis['horas_anuales'])
+    
+#     # Análisis de rentabilidad actual
+#     if resumen['total_consultas'] > 0:
+#         st.subheader("📈 Análisis de Rentabilidad Actual")
+        
+#         col1, col2 = st.columns(2)
+        
+#         with col1:
+#             st.markdown("**💵 Ingresos vs Costos**")
+#             ingresos_anuales = resumen['ingreso_total'] * 12  # Proyección anual
+#             margen_real = ((ingresos_anuales - costos_analysis['costo_total_anual']) / ingresos_anuales * 100) if ingresos_anuales > 0 else 0
+            
+#             if margen_real > 50:
+#                 st.success(f"✅ Margen excelente: {margen_real:.1f}%")
+#             elif margen_real > 25:
+#                 st.warning(f"⚠️ Margen aceptable: {margen_real:.1f}%")
+#             else:
+#                 st.error(f"🚨 Margen bajo: {margen_real:.1f}%")
+        
+#         with col2:
+#             st.markdown("**⏰ Eficiencia Horaria**")
+#             consultas_mes = resumen['total_consultas'] / max(1, len(data_manager.consultas['fecha'].dt.month.unique()) if not data_manager.consultas.empty else 1)
+#             eficiencia = (consultas_mes * 12) / costos_analysis['horas_anuales'] if costos_analysis['horas_anuales'] > 0 else 0
+            
+#             st.metric("Consultas por Hora Disponible", f"{eficiencia:.2f}")
+
+# # 7 - Funciones de interfaz (actualizadas)
+# def show_dashboard(data_manager, user_info):
+#     especialidad = user_info.get('especialidad', 'odontologia')
+#     especialidad_emoji = {
+#         'odontologia': '🦷',
+#         'dermatologia': '🧴', 
+#         'kinesiologia': '🏃‍♂️'
+#     }.get(especialidad, '🏥')
+    
+#     st.subheader(f"📊 Dashboard - {user_info.get('nombre', 'Usuario')} {especialidad_emoji}")
+    
+#     # Análisis de costos en el dashboard
+#     costos_analysis = data_manager.calcular_costo_hora_real()
+    
+#     # Mostrar alerta si tiene costos configurados
+#     if costos_analysis['costo_total_anual'] > 0:
+#         st.markdown(f"""
+#         <div class="cost-analysis-card">
+#             <h3>💰 Análisis de Costos Automático</h3>
+#             <p>Su costo real por hora: <strong>${costos_analysis['costo_hora_ars']:,.0f} ARS</strong></p>
+#             <p>Precio mínimo recomendado (50% margen): <strong>${costos_analysis['costo_hora_ars'] * 1.5:,.0f} ARS</strong></p>
+#         </div>
+#         """, unsafe_allow_html=True)
+#     else:
+#         st.info("💡 Configure sus equipos y gastos fijos para obtener análisis de costos automático.")
+    
+#     # Dashboard original
+#     resumen = data_manager.get_resumen()
+    
+#     col1, col2, col3, col4 = st.columns(4)
+    
+#     with col1:
+#         st.metric("💰 Ingresos Totales", f"${resumen['ingreso_total']:,.0f} ARS")
+    
+#     with col2:
+#         st.metric("👥 Total Consultas", resumen['total_consultas'])
+    
+#     with col3:
+#         st.metric("📊 Promedio/Consulta", f"${resumen['promedio_consulta']:,.0f} ARS")
+    
+#     with col4:
+#         st.metric("🔥 Más Popular", resumen['tratamiento_popular'])
+    
+#     if not data_manager.consultas.empty:
+#         col1, col2 = st.columns(2)
+        
+#         with col1:
+#             st.subheader("📈 Ingresos por Mes")
+#             df_monthly = data_manager.consultas.copy()
+#             df_monthly['fecha'] = pd.to_datetime(df_monthly['fecha'])
+#             df_monthly['mes'] = df_monthly['fecha'].dt.to_period('M')
+#             monthly_income = df_monthly.groupby('mes')['monto_ars'].sum().reset_index()
+#             monthly_income['mes'] = monthly_income['mes'].astype(str)
+            
+#             fig_monthly = px.bar(monthly_income, x='mes', y='monto_ars', title="Ingresos Mensuales")
+#             st.plotly_chart(fig_monthly, use_container_width=True)
+        
+#         with col2:
+#             st.subheader("🥧 Tratamientos")
+#             tratamientos = data_manager.consultas['tratamiento'].value_counts()
+#             fig_pie = px.pie(values=tratamientos.values, names=tratamientos.index)
+#             st.plotly_chart(fig_pie, use_container_width=True)
+#     else:
+#         st.info("No hay consultas registradas aún.")
+
+# def show_nueva_consulta(data_manager):
+#     st.subheader("➕ Registrar Nueva Consulta")
+    
+#     with st.form("nueva_consulta"):
+#         col1, col2 = st.columns(2)
+        
+#         with col1:
+#             paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
+#             tratamiento = st.selectbox("Tipo de Tratamiento *", 
+#                 ["Consulta", "Limpieza", "Operatoria Simple", "Endodoncia", "Otro"])
+        
+#         with col2:
+#             monto_ars = st.number_input("Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
+#             medio_pago = st.selectbox("Medio de Pago *", 
+#                 ["Efectivo", "Transferencia", "Débito", "Crédito", "Otros"])
+        
+#         submitted = st.form_submit_button("✅ Registrar Consulta", type="primary")
+        
+#         if submitted:
+#             if paciente and tratamiento and monto_ars > 0:
+#                 try:
+#                     data_manager.add_consulta(paciente, tratamiento, monto_ars, medio_pago)
+#                     st.success(f"✅ Consulta registrada: {paciente} - ${monto_ars:,.0f} ARS")
+#                     st.rerun()
+#                 except Exception as e:
+#                     st.error(f"❌ Error: {e}")
+#             else:
+#                 st.error("❌ Complete todos los campos obligatorios")
+
+# def show_login():
+#     st.title("🏥 Manny App - Sistema de Gestión de Consultorios")
+    
+#     col1, col2, col3 = st.columns([1, 2, 1])
+    
+#     with col2:
+#         with st.form("login_form"):
+#             st.write("🔐 Ingresar al Sistema")
+            
+#             username = st.text_input("Usuario", placeholder="Ingrese su usuario")
+#             password = st.text_input("Contraseña", type="password", placeholder="Ingrese su contraseña")
+            
+#             show_demo = st.checkbox("Mostrar credenciales de prueba")
+#             if show_demo:
+#                 st.info("**Usuario:** admin | **Contraseña:** Homero123")
+            
+#             login_button = st.form_submit_button("🚀 Ingresar", use_container_width=True)
+            
+#             if login_button:
+#                 if username and password:
+#                     user_manager = UserManager()
+#                     is_valid, message = user_manager.validate_user(username, password)
+                    
+#                     if is_valid:
+#                         st.session_state.authenticated = True
+#                         st.session_state.user_id = username
+#                         st.session_state.user_info = user_manager.get_user_info(username)
+#                         st.success(f"✅ {message}")
+#                         st.rerun()
+#                     else:
+#                         st.error(f"❌ {message}")
+#                 else:
+#                     st.warning("⚠️ Complete todos los campos")
+
+# def main():
+#     if 'authenticated' not in st.session_state or not st.session_state.authenticated:
+#         show_login()
+#         return
+    
+#     user_id = st.session_state.user_id
+#     user_info = st.session_state.user_info
+    
+#     # Header
+#     col1, col2, col3 = st.columns([3, 1, 1])
+    
+#     with col1:
+#         especialidad = user_info.get('especialidad', 'odontologia')
+#         especialidad_emoji = {'odontologia': '🦷', 'dermatologia': '🧴', 'kinesiologia': '🏃‍♂️'}.get(especialidad, '🏥')
+#         st.markdown(f'<h1 class="main-header">Manny App - {especialidad.title()} {especialidad_emoji}</h1>', unsafe_allow_html=True)
+    
+#     with col2:
+#         st.write(f"👤 {user_info.get('nombre', user_id)}")
+    
+#     with col3:
+#         if st.button("🚪 Cerrar Sesión"):
+#             for key in list(st.session_state.keys()):
+#                 del st.session_state[key]
+#             st.rerun()
+    
+#     # DataManager
+#     if 'data_manager' not in st.session_state:
+#         st.session_state.data_manager = DataManager(user_id=user_id)
+    
+#     data_manager = st.session_state.data_manager
+    
+#     # Sidebar
+#     with st.sidebar:
+#         st.markdown(f"""
+#         <div style='text-align: center; padding: 1rem; background: linear-gradient(90deg, #3b82f6 0%, #1e40af 100%); border-radius: 0.5rem; margin-bottom: 1rem; color: white;'>
+#         <h3>🏥 Manny App</h3>
+#         <p style='margin: 0; font-size: 0.9em;'>{especialidad.title()}</p>
+#         </div>
+#         """, unsafe_allow_html=True)
+        
+#         menu = st.selectbox("📋 Menú Principal", 
+#                            ["🏠 Dashboard", "➕ Nueva Consulta", "💰 Análisis de Costos", "⚙️ Configuración Costos"])
+        
+#         st.markdown("---")
+#         resumen = data_manager.get_resumen()
+#         st.metric("💰 Ingresos", f"${resumen['ingreso_total']:,.0f} ARS")
+#         st.metric("📊 Consultas", resumen['total_consultas'])
+        
+#         # Mostrar costo por hora si está configurado
+#         costos_analysis = data_manager.calcular_costo_hora_real()
+#         if costos_analysis['costo_total_anual'] > 0:
+#             st.markdown("---")
+#             st.metric("🔧 Costo/Hora Real", f"${costos_analysis['costo_hora_ars']:,.0f} ARS")
+    
+#     # Router de páginas
+#     if menu == "🏠 Dashboard":
+#         show_dashboard(data_manager, user_info)
+#     elif menu == "➕ Nueva Consulta":
+#         show_nueva_consulta(data_manager)
+#     elif menu == "💰 Análisis de Costos":
+#         show_analisis_costos(data_manager, user_info)
+#     elif menu == "⚙️ Configuración Costos":
+#         show_configuracion_costos(data_manager)
+
+# if __name__ == "__main__":
+#     main()
 
 # V3.0
 # # 1 - imports
