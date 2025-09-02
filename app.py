@@ -343,7 +343,7 @@ def show_configuracion_costos(data_manager):
             st.markdown("**Equipos registrados:**")
             
             for equipo in data_manager.equipos:
-                col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1])
+                col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1, 1])
                 
                 with col1:
                     st.write(f"**{equipo['nombre']}**")
