@@ -128,6 +128,29 @@ class DataManager:
             self.data_file = "dental_data.json"
         self.user_id = user_id
         self.load_data()
+
+    def update_equipo(self, equipo_id, nombre, monto_usd, años_vida_util, fecha_compra, observaciones):
+        for i, equipo in enumerate(self.equipos):
+            if equipo['id'] == equipo_id:
+                self.equipos[i].update({
+                    'nombre': nombre,
+                    'monto_compra_usd': float(monto_usd),
+                    'años_vida_util': int(años_vida_util),
+                    'fecha_compra': fecha_compra.isoformat() if isinstance(fecha_compra, date) else fecha_compra,
+                    'observaciones': observaciones
+                })
+                break
+        self.save_data()
+
+    def update_gasto_fijo(self, gasto_id, concepto, monto_mensual_ars):
+        for i, gasto in enumerate(self.gastos_fijos):
+            if gasto['id'] == gasto_id:
+                self.gastos_fijos[i].update({
+                    'concepto': concepto,
+                    'monto_mensual_ars': float(monto_mensual_ars)
+                })
+                break
+        self.save_data()
     
     def load_data(self):
         if os.path.exists(self.data_file):
@@ -320,7 +343,7 @@ def show_configuracion_costos(data_manager):
             st.markdown("**Equipos registrados:**")
             
             for equipo in data_manager.equipos:
-                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 1])
+                col1, col2, col3, col4, col5, col6 = st.columns([3, 2, 2, 2, 1])
                 
                 with col1:
                     st.write(f"**{equipo['nombre']}**")
@@ -332,6 +355,10 @@ def show_configuracion_costos(data_manager):
                     fecha_compra = pd.to_datetime(equipo['fecha_compra']).strftime('%d/%m/%Y')
                     st.write(fecha_compra)
                 with col5:
+                    if st.button("✏️", key=f"edit_equipo_{equipo['id']}", help="Editar equipo"):
+                        st.session_state[f'editing_equipo_{equipo["id"]}'] = True
+                        st.rerun()
+                with col6:
                     if st.button("🗑️", key=f"del_equipo_{equipo['id']}", help="Eliminar equipo"):
                         data_manager.delete_equipo(equipo['id'])
                         st.success("Equipo eliminado")
@@ -358,6 +385,10 @@ def show_configuracion_costos(data_manager):
                 if nombre_equipo and monto_usd > 0:
                     data_manager.add_equipo(nombre_equipo, monto_usd, años_vida, fecha_compra, observaciones)
                     st.success("✅ Equipo agregado correctamente")
+                    # Limpiar session_state de los campos del formulario
+                    for key in st.session_state.keys():
+                        if key.startswith('FormSubmitter:nuevo_equipo'):
+                            del st.session_state[key]
                     st.rerun()
                 else:
                     st.error("❌ Complete los campos obligatorios")
@@ -402,6 +433,10 @@ def show_configuracion_costos(data_manager):
                 if concepto and monto_mensual > 0:
                     data_manager.add_gasto_fijo(concepto, monto_mensual)
                     st.success("✅ Gasto agregado correctamente")
+                    # Limpiar session_state de los campos del formulario
+                    for key in st.session_state.keys():
+                        if key.startswith('FormSubmitter:nuevo_gasto'):
+                            del st.session_state[key]
                     st.rerun()
                 else:
                     st.error("❌ Complete los campos obligatorios")
