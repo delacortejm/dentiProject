@@ -560,6 +560,8 @@ def show_analisis_costos(data_manager, user_info):
             st.metric("Consultas por Hora Disponible", f"{eficiencia:.2f}")
 
 # 7 - Funciones de interfaz (actualizadas)
+# FUNCIÓN MEJORADA DE DASHBOARD - PEGAR ENCIMA DE LA FUNCIÓN show_dashboard ACTUAL
+
 def show_dashboard(data_manager, user_info):
     especialidad = user_info.get('especialidad', 'odontologia')
     especialidad_emoji = {
@@ -585,7 +587,7 @@ def show_dashboard(data_manager, user_info):
     else:
         st.info("💡 Configure sus equipos y gastos fijos para obtener análisis de costos automático.")
     
-    # Dashboard original
+    # Dashboard con métricas principales
     resumen = data_manager.get_resumen()
     
     col1, col2, col3, col4 = st.columns(4)
@@ -602,27 +604,347 @@ def show_dashboard(data_manager, user_info):
     with col4:
         st.metric("🔥 Más Popular", resumen['tratamiento_popular'])
     
-    if not data_manager.consultas.empty:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("📈 Ingresos por Mes")
-            df_monthly = data_manager.consultas.copy()
-            df_monthly['fecha'] = pd.to_datetime(df_monthly['fecha'])
-            df_monthly['mes'] = df_monthly['fecha'].dt.to_period('M')
-            monthly_income = df_monthly.groupby('mes')['monto_ars'].sum().reset_index()
-            monthly_income['mes'] = monthly_income['mes'].astype(str)
-            
-            fig_monthly = px.bar(monthly_income, x='mes', y='monto_ars', title="Ingresos Mensuales")
-            st.plotly_chart(fig_monthly, use_container_width=True)
-        
-        with col2:
-            st.subheader("🥧 Tratamientos")
-            tratamientos = data_manager.consultas['tratamiento'].value_counts()
-            fig_pie = px.pie(values=tratamientos.values, names=tratamientos.index)
-            st.plotly_chart(fig_pie, use_container_width=True)
-    else:
+    # Si no hay consultas, mostrar mensaje y terminar
+    if data_manager.consultas.empty:
         st.info("No hay consultas registradas aún.")
+        return
+    
+    # Preparar datos para gráficos
+    df_consultas = data_manager.consultas.copy()
+    df_consultas['fecha'] = pd.to_datetime(df_consultas['fecha'])
+    
+    # =============================================================================
+    # SECCIÓN 1: GRÁFICOS DE TIEMPO Y TENDENCIAS
+    # =============================================================================
+    st.markdown("---")
+    st.subheader("📈 Tendencias Temporales")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 1. Ingresos por mes (línea con marcadores)
+        st.markdown("**💰 Evolución de Ingresos Mensuales**")
+        df_monthly = df_consultas.copy()
+        df_monthly['mes'] = df_monthly['fecha'].dt.to_period('M')
+        monthly_data = df_monthly.groupby('mes').agg({
+            'monto_ars': 'sum',
+            'paciente': 'count'
+        }).reset_index()
+        monthly_data['mes'] = monthly_data['mes'].astype(str)
+        
+        fig_monthly_line = px.line(
+            monthly_data, 
+            x='mes', 
+            y='monto_ars',
+            markers=True,
+            title="",
+            labels={'monto_ars': 'Ingresos (ARS)', 'mes': 'Mes'}
+        )
+        fig_monthly_line.update_traces(line_color='#3b82f6', line_width=3)
+        fig_monthly_line.update_layout(height=300)
+        st.plotly_chart(fig_monthly_line, use_container_width=True)
+    
+    with col2:
+        # 2. Consultas por día de la semana
+        st.markdown("**📅 Consultas por Día de la Semana**")
+        df_consultas['dia_semana'] = df_consultas['fecha'].dt.day_name()
+        dias_orden = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        dias_español = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        
+        consultas_dia = df_consultas['dia_semana'].value_counts().reindex(dias_orden).fillna(0)
+        consultas_dia.index = dias_español
+        
+        fig_dias = px.bar(
+            x=consultas_dia.index, 
+            y=consultas_dia.values,
+            title="",
+            labels={'x': 'Día', 'y': 'Cantidad de Consultas'},
+            color=consultas_dia.values,
+            color_continuous_scale='Blues'
+        )
+        fig_dias.update_layout(height=300, showlegend=False)
+        st.plotly_chart(fig_dias, use_container_width=True)
+    
+    # =============================================================================
+    # SECCIÓN 2: ANÁLISIS DE TRATAMIENTOS Y PACIENTES
+    # =============================================================================
+    st.markdown("---")
+    st.subheader("🦷 Análisis de Tratamientos")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 3. Top tratamientos por ingresos (barras horizontales)
+        st.markdown("**💰 Top Tratamientos por Ingresos**")
+        tratamientos_ingresos = df_consultas.groupby('tratamiento')['monto_ars'].sum().sort_values(ascending=True).tail(8)
+        
+        fig_tratamientos = px.bar(
+            x=tratamientos_ingresos.values,
+            y=tratamientos_ingresos.index,
+            orientation='h',
+            title="",
+            labels={'x': 'Ingresos Totales (ARS)', 'y': 'Tratamiento'},
+            color=tratamientos_ingresos.values,
+            color_continuous_scale='Viridis'
+        )
+        fig_tratamientos.update_layout(height=350, showlegend=False)
+        st.plotly_chart(fig_tratamientos, use_container_width=True)
+    
+    with col2:
+        # 4. Distribución de precios (histograma)
+        st.markdown("**📊 Distribución de Precios de Consultas**")
+        fig_hist = px.histogram(
+            df_consultas, 
+            x='monto_ars', 
+            nbins=15,
+            title="",
+            labels={'monto_ars': 'Monto (ARS)', 'count': 'Frecuencia'},
+            color_discrete_sequence=['#ef4444']
+        )
+        fig_hist.update_layout(height=350)
+        st.plotly_chart(fig_hist, use_container_width=True)
+    
+    # =============================================================================
+    # SECCIÓN 3: MÉTRICAS AVANZADAS
+    # =============================================================================
+    st.markdown("---")
+    st.subheader("📈 Métricas de Rendimiento")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # 5. Gauge de objetivo mensual
+        st.markdown("**🎯 Objetivo Mensual**")
+        objetivo_mensual = 500000  # Puedes hacer esto configurable
+        ingresos_mes_actual = resumen['ingresos_mes']
+        porcentaje_objetivo = (ingresos_mes_actual / objetivo_mensual) * 100 if objetivo_mensual > 0 else 0
+        
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number+delta",
+            value = porcentaje_objetivo,
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            title = {'text': "% Objetivo Mensual"},
+            delta = {'reference': 100},
+            gauge = {
+                'axis': {'range': [None, 150]},
+                'bar': {'color': "darkblue"},
+                'steps': [
+                    {'range': [0, 50], 'color': "lightgray"},
+                    {'range': [50, 100], 'color': "gray"}
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 100
+                }
+            }
+        ))
+        fig_gauge.update_layout(height=250)
+        st.plotly_chart(fig_gauge, use_container_width=True)
+        st.caption(f"Objetivo: ${objetivo_mensual:,.0f} ARS/mes")
+    
+    with col2:
+        # 6. Medios de pago (dona)
+        st.markdown("**💳 Medios de Pago**")
+        medios_pago = df_consultas['medio_pago'].value_counts()
+        
+        fig_dona = px.pie(
+            values=medios_pago.values, 
+            names=medios_pago.index,
+            hole=0.5,
+            title=""
+        )
+        fig_dona.update_traces(textposition='inside', textinfo='percent+label')
+        fig_dona.update_layout(height=300)
+        st.plotly_chart(fig_dona, use_container_width=True)
+    
+    with col3:
+        # 7. Pacientes más frecuentes
+        st.markdown("**👥 Top Pacientes**")
+        top_pacientes = df_consultas['paciente'].value_counts().head(5)
+        
+        for i, (paciente, cantidad) in enumerate(top_pacientes.items()):
+            color = ['🥇', '🥈', '🥉', '🏅', '🏅'][i]
+            st.write(f"{color} {paciente}: {cantidad} consultas")
+    
+    # =============================================================================
+    # SECCIÓN 4: ANÁLISIS TEMPORAL DETALLADO
+    # =============================================================================
+    st.markdown("---")
+    st.subheader("⏰ Análisis Temporal Detallado")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 8. Heatmap de horarios (simulado con horas del día)
+        st.markdown("**⏰ Distribución por Hora del Día**")
+        df_consultas['hora'] = df_consultas['fecha'].dt.hour
+        horas_consultas = df_consultas['hora'].value_counts().sort_index()
+        
+        fig_horas = px.bar(
+            x=horas_consultas.index,
+            y=horas_consultas.values,
+            title="",
+            labels={'x': 'Hora del Día', 'y': 'Cantidad de Consultas'},
+            color=horas_consultas.values,
+            color_continuous_scale='YlOrRd'
+        )
+        fig_horas.update_layout(height=300, showlegend=False)
+        st.plotly_chart(fig_horas, use_container_width=True)
+    
+    with col2:
+        # 9. Tendencia de precios promedio
+        st.markdown("**💹 Evolución Precio Promedio**")
+        precio_promedio_mes = df_consultas.groupby(df_consultas['fecha'].dt.to_period('M'))['monto_ars'].mean()
+        precio_promedio_mes.index = precio_promedio_mes.index.astype(str)
+        
+        fig_precio_trend = px.line(
+            x=precio_promedio_mes.index,
+            y=precio_promedio_mes.values,
+            markers=True,
+            title="",
+            labels={'x': 'Mes', 'y': 'Precio Promedio (ARS)'}
+        )
+        fig_precio_trend.update_traces(line_color='#10b981', line_width=3)
+        fig_precio_trend.update_layout(height=300)
+        st.plotly_chart(fig_precio_trend, use_container_width=True)
+    
+    # =============================================================================
+    # SECCIÓN 5: KPIs Y ALERTAS
+    # =============================================================================
+    st.markdown("---")
+    st.subheader("🚨 Alertas y KPIs")
+    
+    # Calcular KPIs
+    dias_desde_ultima = (datetime.now() - df_consultas['fecha'].max()).days
+    consultas_ultima_semana = len(df_consultas[df_consultas['fecha'] >= pd.Timestamp.now() - pd.Timedelta(days=7)])
+    ingreso_promedio_diario = df_consultas['monto_ars'].sum() / len(df_consultas['fecha'].dt.date.unique())
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        color = "🟢" if dias_desde_ultima <= 2 else "🟡" if dias_desde_ultima <= 7 else "🔴"
+        st.metric("📅 Última Consulta", f"{dias_desde_ultima} días", delta=color)
+    
+    with col2:
+        st.metric("📊 Esta Semana", f"{consultas_ultima_semana} consultas")
+    
+    with col3:
+        st.metric("💰 Promedio Diario", f"${ingreso_promedio_diario:,.0f} ARS")
+    
+    with col4:
+        # Calcular crecimiento vs mes anterior
+        mes_actual = datetime.now().month
+        mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
+        
+        ingresos_mes_actual = df_consultas[df_consultas['fecha'].dt.month == mes_actual]['monto_ars'].sum()
+        ingresos_mes_anterior = df_consultas[df_consultas['fecha'].dt.month == mes_anterior]['monto_ars'].sum()
+        
+        if ingresos_mes_anterior > 0:
+            crecimiento = ((ingresos_mes_actual - ingresos_mes_anterior) / ingresos_mes_anterior) * 100
+            delta_color = "normal" if crecimiento >= 0 else "inverse"
+            st.metric("📈 Crecimiento Mensual", f"{crecimiento:+.1f}%", delta=f"{crecimiento:+.1f}%")
+        else:
+            st.metric("📈 Crecimiento Mensual", "N/A")
+    
+    # CÓDIGO DEL GRÁFICO DE COSTOS VS INGRESOS MENSUAL
+
+    # Calcular datos para el gráfico
+    costos_analysis = data_manager.calcular_costo_hora_real()
+    costo_mensual_total = costos_analysis['costo_total_anual'] / 12  # Costo mensual
+
+    # Obtener ingresos del mes actual
+    fecha_actual = datetime.now()
+    if not data_manager.consultas.empty:
+        df_mes_actual = data_manager.consultas[
+            (pd.to_datetime(data_manager.consultas['fecha']).dt.month == fecha_actual.month) &
+            (pd.to_datetime(data_manager.consultas['fecha']).dt.year == fecha_actual.year)
+        ]
+        ingresos_mes_actual = df_mes_actual['monto_ars'].sum()
+    else:
+        ingresos_mes_actual = 0
+
+    # Preparar datos para el gráfico
+    categorias = ['Costos Mensuales', 'Ingresos del Mes']
+    valores = [costo_mensual_total, ingresos_mes_actual]
+    colores = ['#ef4444', '#10b981']  # Rojo para costos, verde para ingresos
+
+    # Crear el gráfico de barras
+    fig_costos_ingresos = px.bar(
+        x=categorias,
+        y=valores,
+        title=f"Costos vs Ingresos - {fecha_actual.strftime('%B %Y')}",
+        labels={'x': '', 'y': 'Monto (ARS)'},
+        color=categorias,
+        color_discrete_map={
+            'Costos Mensuales': '#ef4444',
+            'Ingresos del Mes': '#10b981'
+        }
+    )
+
+    # Personalizar el gráfico
+    fig_costos_ingresos.update_traces(
+        texttemplate='$%{y:,.0f}', 
+        textposition='outside'
+    )
+
+    fig_costos_ingresos.update_layout(
+        height=400,
+        showlegend=False,
+        yaxis=dict(title='Monto en ARS')
+    )
+
+    # Agregar línea de referencia en el punto de equilibrio
+    if costo_mensual_total > 0:
+        fig_costos_ingresos.add_hline(
+            y=costo_mensual_total, 
+            line_dash="dash", 
+            line_color="orange",
+            annotation_text="Punto de Equilibrio"
+        )
+
+    # Mostrar el gráfico
+    st.plotly_chart(fig_costos_ingresos, use_container_width=True)
+
+    # Agregar métricas de contexto debajo del gráfico
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        diferencia = ingresos_mes_actual - costo_mensual_total
+        if diferencia >= 0:
+            st.metric("Resultado del Mes", f"${diferencia:,.0f} ARS", delta="Ganancia")
+        else:
+            st.metric("Resultado del Mes", f"${abs(diferencia):,.0f} ARS", delta="Déficit")
+
+    with col2:
+        if costo_mensual_total > 0:
+            cobertura = (ingresos_mes_actual / costo_mensual_total) * 100
+            st.metric("% Costos Cubiertos", f"{cobertura:.1f}%")
+        else:
+            st.metric("% Costos Cubiertos", "N/A")
+
+    with col3:
+        if costo_mensual_total > 0 and ingresos_mes_actual < costo_mensual_total:
+            faltante = costo_mensual_total - ingresos_mes_actual
+            st.metric("Falta para Equilibrio", f"${faltante:,.0f} ARS")
+
+    # Alertas personalizadas
+    if dias_desde_ultima > 7:
+        st.warning("⚠️ Han pasado más de 7 días desde su última consulta registrada")
+    
+    if consultas_ultima_semana < 5:
+        st.info("💡 Esta semana ha tenido pocas consultas. ¿Considera agendar más citas?")
+    
+    if resumen['promedio_consulta'] > 0 and costos_analysis['costo_total_anual'] > 0:
+        margen_actual = ((resumen['promedio_consulta'] - (costos_analysis['costo_hora_ars'] * 1.5)) / resumen['promedio_consulta']) * 100
+        if margen_actual < 25:
+            st.error("🚨 Sus márgenes están por debajo del 25%. Considere ajustar precios.")
+        elif margen_actual > 60:
+            st.success("✅ Excelentes márgenes de ganancia!")
+    
+    # Mostrar última actualización
+    st.markdown("---")
+    st.caption(f"📊 Dashboard actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')} - Total de gráficos: 9")
 
 def show_calculadora_inteligente(data_manager):
     """Calculadora inteligente con análisis de costos automático"""
