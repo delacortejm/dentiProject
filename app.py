@@ -188,6 +188,13 @@ class DataManager:
             'monto_ars': monto_ars,
             'medio_pago': medio_pago
         }
+        if self.consultas.empty:
+            self.consultas = pd.DataFrame([nueva_consulta])
+        else:
+            self.consultas = pd.concat([self.consultas, pd.DataFrame([nueva_consulta])], ignore_index=True)
+        
+        self.save_data()
+        return nueva_consulta
     
     def add_equipo(self, nombre, monto_usd, años_vida_util, fecha_compra, observaciones=""):
         nuevo_equipo = {
