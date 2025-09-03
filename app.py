@@ -173,20 +173,21 @@ class DataManager:
             st.error(f"Error guardando datos: {e}")
             return False
     
-    def add_consulta(self, paciente, tratamiento, monto_ars, medio_pago):
+    def add_consulta(self, paciente, tratamiento, monto_ars, medio_pago, fecha_consulta=None):
+        if fecha_consulta:
+            # Combinar fecha seleccionada con hora actual
+            fecha_completa = datetime.combine(fecha_consulta, datetime.now().time())
+            fecha_iso = fecha_completa.isoformat()
+        else:
+            fecha_iso = datetime.now().isoformat()
+        
         nueva_consulta = {
-            'fecha': datetime.now().isoformat(),
+            'fecha': fecha_iso,
             'paciente': paciente,
             'tratamiento': tratamiento,
             'monto_ars': monto_ars,
             'medio_pago': medio_pago
         }
-        if self.consultas.empty:
-            self.consultas = pd.DataFrame([nueva_consulta])
-        else:
-            self.consultas = pd.concat([self.consultas, pd.DataFrame([nueva_consulta])], ignore_index=True)
-        self.save_data()
-        return nueva_consulta
     
     def add_equipo(self, nombre, monto_usd, años_vida_util, fecha_compra, observaciones=""):
         nuevo_equipo = {
@@ -1629,22 +1630,25 @@ def show_nueva_consulta(data_manager):
     with st.form("nueva_consulta"):
         col1, col2 = st.columns(2)
         
-        with col1:
-            paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
-            tratamiento = st.selectbox("Tipo de Tratamiento *", 
-                ["Consulta", "Limpieza", "Operatoria Simple", "Endodoncia", "Otro"])
+    with col1:
+        paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
+        tratamiento = st.selectbox("Tipo de Tratamiento *", 
+            ["Consulta", "Limpieza", "Operatoria Simple", "Endodoncia", "Otro"])
         
-        with col2:
-            monto_ars = st.number_input("Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
-            medio_pago = st.selectbox("Medio de Pago *", 
-                ["Efectivo", "Transferencia", "Débito", "Crédito", "Otros"])
+        # AGREGAR SOLO FECHA
+        fecha_consulta = st.date_input("📅 Fecha de la Consulta *", value=date.today())
+
+    with col2:
+        monto_ars = st.number_input("Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
+        medio_pago = st.selectbox("Medio de Pago *", 
+            ["Efectivo", "Transferencia", "Débito", "Crédito", "Otros"])
         
         submitted = st.form_submit_button("✅ Registrar Consulta", type="primary")
         
         if submitted:
             if paciente and tratamiento and monto_ars > 0:
                 try:
-                    data_manager.add_consulta(paciente, tratamiento, monto_ars, medio_pago)
+                    data_manager.add_consulta(paciente, tratamiento, monto_ars, medio_pago, fecha_consulta)
                     st.success(f"✅ Consulta registrada: {paciente} - ${monto_ars:,.0f} ARS")
                     st.rerun()
                 except Exception as e:
