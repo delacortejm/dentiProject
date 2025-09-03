@@ -1637,18 +1637,17 @@ def show_nueva_consulta(data_manager):
     with st.form("nueva_consulta"):
         col1, col2 = st.columns(2)
         
-    with col1:
-        paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
-        tratamiento = st.selectbox("Tipo de Tratamiento *", 
-            ["Consulta", "Limpieza", "Operatoria Simple", "Endodoncia", "Otro"])
-        
-        # AGREGAR SOLO FECHA
-        fecha_consulta = st.date_input("📅 Fecha de la Consulta *", value=date.today())
+        with col1:  # ← CORREGIDO: DENTRO DEL FORM
+            paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
+            tratamiento = st.selectbox("Tipo de Tratamiento *", 
+                ["Consulta", "Limpieza", "Operatoria Simple", "Endodoncia", "Otro"])
+            
+            fecha_consulta = st.date_input("📅 Fecha de la Consulta *", value=date.today())
 
-    with col2:
-        monto_ars = st.number_input("Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
-        medio_pago = st.selectbox("Medio de Pago *", 
-            ["Efectivo", "Transferencia", "Débito", "Crédito", "Otros"])
+        with col2:  # ← CORREGIDO: DENTRO DEL FORM
+            monto_ars = st.number_input("Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
+            medio_pago = st.selectbox("Medio de Pago *", 
+                ["Efectivo", "Transferencia", "Débito", "Crédito", "Otros"])
         
         submitted = st.form_submit_button("✅ Registrar Consulta", type="primary")
         
