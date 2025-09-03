@@ -975,9 +975,9 @@ def show_dashboard(data_manager, user_info):
     with col2:
         if consultas_mes > 0:
             promedio = ingresos_mes / consultas_mes
-            st.metric("📈 Promedio/Consulta", f"${promedio:,.0f}")
+            st.metric("📈 Promedio/Prestación", f"${promedio:,.0f}")
         else:
-            st.metric("📈 Promedio/Consulta", "$0")
+            st.metric("📈 Promedio/Prestación", "$0")
 
     with col3:
         if costo_mensual_total > 0:
@@ -989,7 +989,7 @@ def show_dashboard(data_manager, user_info):
     with col4:
         if diferencia < 0 and consultas_mes > 0:
             consultas_necesarias = abs(diferencia) / (ingresos_mes / consultas_mes)
-            st.metric("🎯 Consultas Faltantes", f"{consultas_necesarias:.0f}")
+            st.metric("🎯 Prestacioness Faltantes", f"{consultas_necesarias:.0f}")
         elif porcentaje > 100:
             exceso = porcentaje - 100
             st.metric("🎉 Exceso sobre Meta", f"+{exceso:.1f}%")
@@ -1007,9 +1007,9 @@ def show_dashboard(data_manager, user_info):
     elif porcentaje >= 50:
         st.info("💪 Progreso sólido. Mantén el ritmo para alcanzar la meta mensual.")
     elif consultas_mes == 0:
-        st.error("📝 Aún no hay consultas registradas este mes. ¡Es hora de empezar!")
+        st.error("📝 Aún no hay Prestacioness registradas este mes. ¡Es hora de empezar!")
     else:
-        st.warning("⚡ El mes necesita más impulso. Considera estrategias para aumentar las consultas.")
+        st.warning("⚡ El mes necesita más impulso. Considera estrategias para aumentar las Prestacioness.")
 
     # Alerta si no hay costos configurados
     if costos_analysis['costo_total_anual'] == 0:
@@ -1021,7 +1021,7 @@ def show_dashboard(data_manager, user_info):
         st.warning("⚠️ Han pasado más de 7 días desde su última consulta registrada")
     
     if consultas_ultima_semana < 5:
-        st.info("💡 Esta semana ha tenido pocas consultas. ¿Considera agendar más citas?")
+        st.info("💡 Esta semana ha tenido pocas prestaciones. ¿Considera agendar más citas?")
     
     if resumen['promedio_consulta'] > 0 and costos_analysis['costo_total_anual'] > 0:
         margen_actual = ((resumen['promedio_consulta'] - (costos_analysis['costo_hora_ars'] * 1.5)) / resumen['promedio_consulta']) * 100
@@ -1255,9 +1255,9 @@ def show_calculadora_inteligente(data_manager):
                         
                 else:
                     st.info(f"No se encontraron registros anteriores de '{tratamiento_seleccionado}'")
-                    st.info("Una vez que registre este tratamiento, aparecerá en el histórico para futuras consultas")
+                    st.info("Una vez que registre este tratamiento, aparecerá en el histórico para futuras prestaciones")
             else:
-                st.info("No hay consultas registradas aún para mostrar histórico")
+                st.info("No hay prestaciones registradas aún para mostrar histórico")
 
 def extraer_monto_numerico(monto_str):
     """Extrae valor numérico de string de monto"""
@@ -1352,7 +1352,7 @@ def show_migration_tool(data_manager):
     uploaded_file = st.file_uploader(
         "Sube tu archivo CSV", 
         type=['csv'],
-        help="Sube cualquier archivo CSV con datos de consultas"
+        help="Sube cualquier archivo CSV con datos de prestaciones"
     )
     
     if uploaded_file is not None:
@@ -1722,12 +1722,12 @@ def main():
         """, unsafe_allow_html=True)
         
         menu = st.selectbox("📋 Menú Principal", 
-                           ["🏠 Dashboard", "➕ Nueva Consulta", "📋 Gestionar Consultas", "🧮 Calculadora Inteligente", "💰 Análisis de Costos", "⚙️ Configuración Costos", "📥 Importar Datos"])
+                           ["🏠 Dashboard", "➕ Nueva Consulta", "📋 Gestionar prestaciones", "🧮 Calculadora Inteligente", "💰 Análisis de Costos", "⚙️ Configuración Costos", "📥 Importar Datos"])
         
         st.markdown("---")
         resumen = data_manager.get_resumen()
         st.metric("💰 Ingresos", f"${resumen['ingreso_total']:,.0f} ARS")
-        st.metric("📊 Consultas", resumen['total_consultas'])
+        st.metric("📊 Prestaciones", resumen['total_consultas'])
         
         # Mostrar costo por hora si está configurado
         costos_analysis = data_manager.calcular_costo_hora_real()
@@ -1740,7 +1740,7 @@ def main():
         show_dashboard(data_manager, user_info)
     elif menu == "➕ Nueva Consulta":
         show_nueva_consulta(data_manager)
-    elif menu == "📋 Gestionar Consultas":
+    elif menu == "📋 Gestionar Prestaciones":
         show_gestionar_consultas(data_manager)
     elif menu == "🧮 Calculadora Inteligente":
         show_calculadora_inteligente(data_manager)
@@ -1756,11 +1756,11 @@ def main():
 # =============================================================================
 
 def show_gestionar_consultas(data_manager):
-    """Módulo completo de gestión de consultas existentes"""
-    st.title("📋 Gestión de Consultas")
+    """Módulo completo de gestión de prestaciones existentes"""
+    st.title("📋 Gestión de Prestaciones")
     
     if data_manager.consultas.empty:
-        st.info("No hay consultas registradas aún. Ve a 'Nueva Consulta' para agregar la primera.")
+        st.info("No hay prestaciones registradas aún. Ve a 'Nueva Consulta' para agregar la primera.")
         return
     
     # Preparar datos para mostrar
@@ -1773,7 +1773,7 @@ def show_gestionar_consultas(data_manager):
     ])
     
     with tab1:
-        st.subheader("📋 Todas las Consultas")
+        st.subheader("📋 Todas las prestaciones")
         
         # Controles de visualización
         col1, col2, col3 = st.columns(3)
@@ -1803,7 +1803,7 @@ def show_gestionar_consultas(data_manager):
         # Mostrar resumen de la vista actual
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("📊 Consultas Mostradas", len(df_display))
+            st.metric("📊 Prestaciones Mostradas", len(df_display))
         with col2:
             total_vista = df_display['monto_ars'].sum()
             st.metric("💰 Total Vista", f"${total_vista:,.0f} ARS")
@@ -1814,7 +1814,7 @@ def show_gestionar_consultas(data_manager):
             else:
                 st.metric("📈 Promedio Vista", "$0 ARS")
         with col4:
-            st.metric("📅 Total Consultas", len(df_consultas))
+            st.metric("📅 Total Prestaciones", len(df_consultas))
         
         # Tabla de consultas con formato mejorado
         if not df_display.empty:
@@ -1835,12 +1835,12 @@ def show_gestionar_consultas(data_manager):
                 st.download_button(
                     label="💾 Descargar CSV",
                     data=csv_data,
-                    file_name=f"consultas_vista_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    file_name=f"Prestaciones_vista_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
                     mime="text/csv"
                 )
     
     with tab2:
-        st.subheader("🔍 Buscar y Filtrar Consultas")
+        st.subheader("🔍 Buscar y Filtrar Prestaciones")
         
         # Formulario de búsqueda avanzada
         with st.form("busqueda_avanzada"):
