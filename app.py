@@ -868,8 +868,13 @@ def show_dashboard(data_manager, user_info):
         }
         
         for mes in meses_disponibles:
-            fecha_mes = pd.to_datetime(str(mes))
-            nombre_mes = fecha_mes.strftime('%B %Y')
+            try:
+                fecha_mes = pd.to_datetime(str(mes))
+                if pd.isna(fecha_mes):
+                    continue
+                nombre_mes = fecha_mes.strftime('%B %Y')
+            except:
+                continue
             for ingles, español in nombres_meses.items():
                 nombre_mes = nombre_mes.replace(ingles, español)
             opciones_meses.append((str(mes), nombre_mes))
