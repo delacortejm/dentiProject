@@ -291,7 +291,7 @@ class DataManager:
             }
         
         if not self.consultas.empty:
-            self.consultas['fecha'] = pd.to_datetime(self.consultas['fecha'])
+            self.consultas['fecha'] = pd.to_datetime(self.consultas['fecha'], errors='coerce')
         
         total_consultas = len(self.consultas)
         ingreso_total = self.consultas['monto_ars'].sum()
@@ -611,7 +611,7 @@ def show_dashboard(data_manager, user_info):
     
     # Preparar datos para gráficos
     df_consultas = data_manager.consultas.copy()
-    df_consultas['fecha'] = pd.to_datetime(df_consultas['fecha'])
+    df_consultas['fecha'] = pd.to_datetime(df_consultas['fecha'], errors='coerce')
     
     # =============================================================================
     # SECCIÓN 1: GRÁFICOS DE TIEMPO Y TENDENCIAS
@@ -852,7 +852,7 @@ def show_dashboard(data_manager, user_info):
     # Selector de mes (mismo código)
     if not data_manager.consultas.empty:
         df_fechas = data_manager.consultas.copy()
-        df_fechas['fecha'] = pd.to_datetime(df_fechas['fecha'])
+        df_fechas['fecha'] = pd.to_datetime(df_fechas['fecha'], errors='coerce')
         
         # Obtener meses disponibles
         meses_disponibles = df_fechas['fecha'].dt.to_period('M').unique()
