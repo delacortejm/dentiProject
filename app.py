@@ -1482,8 +1482,7 @@ def show_gestionar_consultas(data_manager):
                     min_value=float(monto_min),
                     max_value=float(monto_max),
                     value=(float(monto_min), float(monto_max)),
-                    step=1000.0,
-                    format="$%,.0f"
+                    step=1000.0
                 )
             
             buscar_btn = st.form_submit_button("🔍 Buscar", type="primary")
