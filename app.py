@@ -1953,7 +1953,7 @@ def show_gestionar_consultas(data_manager):
         # Selección de consulta para editar
         df_para_editar = df_consultas.copy()
         df_para_editar['display'] = df_para_editar.apply(
-            lambda row: f"{row['fecha'].strftime('%d/%m/%Y')} - {row['paciente']} - {row['tratamiento']} - ${row['monto_ars']:,.0f}",
+            lambda row: f"{row['fecha'].strftime('%d/%m/%Y') if pd.notna(row['fecha']) else 'Fecha inválida'} - {row['paciente']} - {row['tratamiento']} - ${row['monto_ars']:,.0f}",
             axis=1
         )
         
@@ -2064,7 +2064,7 @@ def show_gestionar_consultas(data_manager):
         # Selección para eliminación individual
         df_para_eliminar = df_consultas.copy()
         df_para_eliminar['display'] = df_para_eliminar.apply(
-            lambda row: f"{row['fecha'].strftime('%d/%m/%Y')} - {row['paciente']} - {row['tratamiento']} - ${row['monto_ars']:,.0f}",
+            lambda row: f"{row['fecha'].strftime('%d/%m/%Y') if pd.notna(row['fecha']) else 'Fecha inválida'} - {row['paciente']} - {row['tratamiento']} - ${row['monto_ars']:,.0f}",
             axis=1
         )
         
