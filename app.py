@@ -2176,6 +2176,8 @@ def aplicar_filtros_visualizacion(df, mostrar_desde, cantidad, ordenar_por):
 def aplicar_filtros_busqueda(df, paciente, tratamiento, medio_pago, fecha_desde, fecha_hasta, rango_montos):
     """Aplica filtros de búsqueda avanzada"""
     df_resultado = df.copy()
+    df_resultado = df_resultado.dropna(subset=['fecha'])
+
     
     # Filtro por paciente
     if paciente:
@@ -2193,8 +2195,7 @@ def aplicar_filtros_busqueda(df, paciente, tratamiento, medio_pago, fecha_desde,
     
     # Filtro por fechas
     df_resultado = df_resultado[
-        (df_resultado['fecha'].dt.date >= fecha_desde) &
-        (df_resultado['fecha'].dt.date <= fecha_hasta)
+        (df_resultado['fecha'].notna()) & (df_resultado['fecha'].dt.date >= fecha_desde) & (df_resultado['fecha'].dt.date<=fecha_hasta)
     ]
     
     # Filtro por montos
