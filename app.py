@@ -1331,7 +1331,7 @@ def main():
     elif menu == "➕ Nueva Consulta":
         show_nueva_consulta(data_manager)
     elif menu == "📋 Gestionar Consultas":
-        show_nueva_consulta(data_manager)
+        show_gestionar_consultas(data_manager)
     elif menu == "🧮 Calculadora Inteligente":
         show_calculadora_inteligente(data_manager)
     elif menu == "💰 Análisis de Costos":
@@ -1340,6 +1340,478 @@ def main():
         show_configuracion_costos(data_manager)
     elif menu == "📥 Migrar Datos":
         show_migration_tool(data_manager)
+
+# =============================================================================
+# FUNCIONES DE GESTIÓN DE CONSULTAS - COPIAR EN TU MANNY APP
+# =============================================================================
+
+def show_gestionar_consultas(data_manager):
+    """Módulo completo de gestión de consultas existentes"""
+    st.title("📋 Gestión de Consultas")
+    
+    if data_manager.consultas.empty:
+        st.info("No hay consultas registradas aún. Ve a 'Nueva Consulta' para agregar la primera.")
+        return
+    
+    # Preparar datos para mostrar
+    df_consultas = data_manager.consultas.copy()
+    df_consultas['fecha'] = pd.to_datetime(df_consultas['fecha'])
+    
+    # Pestañas para organizar funcionalidades
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📋 Ver Todas", "🔍 Buscar/Filtrar", "✏️ Editar", "🗑️ Eliminar"
+    ])
+    
+    with tab1:
+        st.subheader("📋 Todas las Consultas")
+        
+        # Controles de visualización
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            mostrar_desde = st.selectbox(
+                "📅 Mostrar desde:",
+                ["Más recientes", "Más antiguas", "Este mes", "Último mes", "Este año"]
+            )
+        
+        with col2:
+            cantidad_mostrar = st.selectbox(
+                "📊 Cantidad a mostrar:",
+                [10, 25, 50, 100, "Todas"],
+                index=1
+            )
+        
+        with col3:
+            ordenar_por = st.selectbox(
+                "🔄 Ordenar por:",
+                ["Fecha (desc)", "Fecha (asc)", "Monto (desc)", "Monto (asc)", "Paciente", "Tratamiento"]
+            )
+        
+        # Aplicar filtros de visualización
+        df_display = aplicar_filtros_visualizacion(df_consultas, mostrar_desde, cantidad_mostrar, ordenar_por)
+        
+        # Mostrar resumen de la vista actual
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("📊 Consultas Mostradas", len(df_display))
+        with col2:
+            total_vista = df_display['monto_ars'].sum()
+            st.metric("💰 Total Vista", f"${total_vista:,.0f} ARS")
+        with col3:
+            if len(df_display) > 0:
+                promedio_vista = df_display['monto_ars'].mean()
+                st.metric("📈 Promedio Vista", f"${promedio_vista:,.0f} ARS")
+            else:
+                st.metric("📈 Promedio Vista", "$0 ARS")
+        with col4:
+            st.metric("📅 Total Consultas", len(df_consultas))
+        
+        # Tabla de consultas con formato mejorado
+        if not df_display.empty:
+            df_mostrar = formatear_tabla_consultas(df_display)
+            
+            # Agregar índice para selección
+            df_mostrar.insert(0, 'ID', range(1, len(df_mostrar) + 1))
+            
+            st.dataframe(
+                df_mostrar, 
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Botón de exportación
+            if st.button("📥 Exportar Vista a CSV"):
+                csv_data = df_mostrar.to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="💾 Descargar CSV",
+                    data=csv_data,
+                    file_name=f"consultas_vista_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv"
+                )
+    
+    with tab2:
+        st.subheader("🔍 Buscar y Filtrar Consultas")
+        
+        # Formulario de búsqueda avanzada
+        with st.form("busqueda_avanzada"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**🔍 Criterios de Búsqueda:**")
+                
+                buscar_paciente = st.text_input(
+                    "👤 Buscar por paciente:",
+                    placeholder="Nombre del paciente...",
+                    help="Busca por nombre completo o parcial"
+                )
+                
+                buscar_tratamiento = st.selectbox(
+                    "🦷 Filtrar por tratamiento:",
+                    ["Todos"] + sorted(df_consultas['tratamiento'].unique().tolist())
+                )
+                
+                buscar_medio_pago = st.selectbox(
+                    "💳 Filtrar por medio de pago:",
+                    ["Todos"] + sorted(df_consultas['medio_pago'].unique().tolist())
+                )
+            
+            with col2:
+                st.markdown("**📅 Rango de Fechas:**")
+                
+                fecha_desde = st.date_input(
+                    "Desde:",
+                    value=df_consultas['fecha'].min().date(),
+                    min_value=df_consultas['fecha'].min().date(),
+                    max_value=df_consultas['fecha'].max().date()
+                )
+                
+                fecha_hasta = st.date_input(
+                    "Hasta:",
+                    value=df_consultas['fecha'].max().date(),
+                    min_value=df_consultas['fecha'].min().date(),
+                    max_value=df_consultas['fecha'].max().date()
+                )
+                
+                st.markdown("**💰 Rango de Montos (ARS):**")
+                
+                monto_min = df_consultas['monto_ars'].min()
+                monto_max = df_consultas['monto_ars'].max()
+                
+                rango_montos = st.slider(
+                    "Selecciona rango:",
+                    min_value=float(monto_min),
+                    max_value=float(monto_max),
+                    value=(float(monto_min), float(monto_max)),
+                    step=1000.0,
+                    format="$%,.0f"
+                )
+            
+            buscar_btn = st.form_submit_button("🔍 Buscar", type="primary")
+            
+            if buscar_btn:
+                # Aplicar filtros de búsqueda
+                df_filtrado = aplicar_filtros_busqueda(
+                    df_consultas, 
+                    buscar_paciente, 
+                    buscar_tratamiento, 
+                    buscar_medio_pago,
+                    fecha_desde, 
+                    fecha_hasta, 
+                    rango_montos
+                )
+                
+                st.session_state.df_filtrado = df_filtrado
+        
+        # Mostrar resultados de búsqueda
+        if hasattr(st.session_state, 'df_filtrado') and not st.session_state.df_filtrado.empty:
+            st.success(f"✅ Se encontraron {len(st.session_state.df_filtrado)} consultas")
+            
+            # Resumen de resultados
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("📊 Resultados", len(st.session_state.df_filtrado))
+            with col2:
+                total_filtrado = st.session_state.df_filtrado['monto_ars'].sum()
+                st.metric("💰 Total", f"${total_filtrado:,.0f} ARS")
+            with col3:
+                promedio_filtrado = st.session_state.df_filtrado['monto_ars'].mean()
+                st.metric("📈 Promedio", f"${promedio_filtrado:,.0f} ARS")
+            
+            # Mostrar tabla de resultados
+            df_resultados = formatear_tabla_consultas(st.session_state.df_filtrado)
+            df_resultados.insert(0, 'ID', range(1, len(df_resultados) + 1))
+            
+            st.dataframe(df_resultados, use_container_width=True, hide_index=True)
+            
+            # Limpiar resultados
+            if st.button("🗑️ Limpiar Búsqueda"):
+                if hasattr(st.session_state, 'df_filtrado'):
+                    del st.session_state.df_filtrado
+                st.rerun()
+        
+        elif hasattr(st.session_state, 'df_filtrado'):
+            st.warning("⚠️ No se encontraron consultas con los criterios especificados")
+    
+    with tab3:
+        st.subheader("✏️ Editar Consultas")
+        st.markdown("Selecciona una consulta para editar sus datos:")
+        
+        # Selección de consulta para editar
+        df_para_editar = df_consultas.copy()
+        df_para_editar['display'] = df_para_editar.apply(
+            lambda row: f"{row['fecha'].strftime('%d/%m/%Y')} - {row['paciente']} - {row['tratamiento']} - ${row['monto_ars']:,.0f}",
+            axis=1
+        )
+        
+        consulta_seleccionada = st.selectbox(
+            "🔍 Seleccionar consulta:",
+            options=range(len(df_para_editar)),
+            format_func=lambda x: df_para_editar.iloc[x]['display'],
+            key="consulta_editar"
+        )
+        
+        if consulta_seleccionada is not None:
+            consulta_datos = df_para_editar.iloc[consulta_seleccionada]
+            
+            st.markdown("---")
+            st.markdown(f"**Editando consulta del {consulta_datos['fecha'].strftime('%d/%m/%Y %H:%M')}:**")
+            
+            # Formulario de edición
+            with st.form("editar_consulta"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    nuevo_paciente = st.text_input(
+                        "👤 Paciente *",
+                        value=consulta_datos['paciente']
+                    )
+                    
+                    tratamientos_disponibles = ["Consulta", "Limpieza", "Operatoria Simple", "Operatoria Compleja", 
+                                               "Endodoncia", "Corona", "Extracción Simple", "Extracción Compleja", "Otro"]
+                    
+                    try:
+                        indice_tratamiento = tratamientos_disponibles.index(consulta_datos['tratamiento'])
+                    except ValueError:
+                        indice_tratamiento = 0
+                    
+                    nuevo_tratamiento = st.selectbox(
+                        "🦷 Tratamiento *",
+                        tratamientos_disponibles,
+                        index=indice_tratamiento
+                    )
+                
+                with col2:
+                    nuevo_monto = st.number_input(
+                        "💰 Monto (ARS) *",
+                        min_value=0.0,
+                        value=float(consulta_datos['monto_ars']),
+                        step=1000.0
+                    )
+                    
+                    medios_pago_disponibles = ["Efectivo", "Transferencia", "Débito", "Crédito", "Mercado Pago", "Otros"]
+                    
+                    try:
+                        indice_medio_pago = medios_pago_disponibles.index(consulta_datos['medio_pago'])
+                    except ValueError:
+                        indice_medio_pago = 0
+                    
+                    nuevo_medio_pago = st.selectbox(
+                        "💳 Medio de Pago *",
+                        medios_pago_disponibles,
+                        index=indice_medio_pago
+                    )
+                
+                nueva_fecha = st.date_input(
+                    "📅 Fecha",
+                    value=consulta_datos['fecha'].date()
+                )
+                
+                nueva_hora = st.time_input(
+                    "🕒 Hora",
+                    value=consulta_datos['fecha'].time()
+                )
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    guardar_cambios = st.form_submit_button("💾 Guardar Cambios", type="primary")
+                
+                with col2:
+                    cancelar_edicion = st.form_submit_button("❌ Cancelar")
+                
+                if guardar_cambios:
+                    if nuevo_paciente and nuevo_tratamiento and nuevo_monto > 0:
+                        # Crear nueva fecha completa
+                        nueva_fecha_completa = datetime.combine(nueva_fecha, nueva_hora)
+                        
+                        # Actualizar la consulta usando el índice real del DataFrame
+                        data_manager.consultas.iloc[consulta_seleccionada, data_manager.consultas.columns.get_loc('fecha')] = nueva_fecha_completa.isoformat()
+                        data_manager.consultas.iloc[consulta_seleccionada, data_manager.consultas.columns.get_loc('paciente')] = nuevo_paciente
+                        data_manager.consultas.iloc[consulta_seleccionada, data_manager.consultas.columns.get_loc('tratamiento')] = nuevo_tratamiento
+                        data_manager.consultas.iloc[consulta_seleccionada, data_manager.consultas.columns.get_loc('monto_ars')] = nuevo_monto
+                        data_manager.consultas.iloc[consulta_seleccionada, data_manager.consultas.columns.get_loc('medio_pago')] = nuevo_medio_pago
+                        
+                        if data_manager.save_data():
+                            st.success("✅ Consulta actualizada exitosamente")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al guardar los cambios")
+                    else:
+                        st.error("❌ Por favor complete todos los campos obligatorios")
+                
+                if cancelar_edicion:
+                    st.info("Edición cancelada")
+    
+    with tab4:
+        st.subheader("🗑️ Eliminar Consultas")
+        
+        st.warning("⚠️ **Atención:** La eliminación de consultas es permanente y no se puede deshacer.")
+        
+        # Selección para eliminación individual
+        df_para_eliminar = df_consultas.copy()
+        df_para_eliminar['display'] = df_para_eliminar.apply(
+            lambda row: f"{row['fecha'].strftime('%d/%m/%Y')} - {row['paciente']} - {row['tratamiento']} - ${row['monto_ars']:,.0f}",
+            axis=1
+        )
+        
+        # Opción de eliminación individual
+        st.markdown("#### 🎯 Eliminación Individual")
+        
+        consulta_eliminar = st.selectbox(
+            "🔍 Seleccionar consulta a eliminar:",
+            options=range(len(df_para_eliminar)),
+            format_func=lambda x: df_para_eliminar.iloc[x]['display'],
+            key="consulta_eliminar"
+        )
+        
+        if consulta_eliminar is not None:
+            consulta_datos = df_para_eliminar.iloc[consulta_eliminar]
+            
+            # Mostrar detalles de la consulta a eliminar
+            with st.expander("👁️ Ver detalles de la consulta", expanded=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**📅 Fecha:** {consulta_datos['fecha'].strftime('%d/%m/%Y %H:%M')}")
+                    st.write(f"**👤 Paciente:** {consulta_datos['paciente']}")
+                    st.write(f"**🦷 Tratamiento:** {consulta_datos['tratamiento']}")
+                with col2:
+                    st.write(f"**💰 Monto:** ${consulta_datos['monto_ars']:,.0f} ARS")
+                    st.write(f"**💳 Medio de Pago:** {consulta_datos['medio_pago']}")
+            
+            # Confirmación de eliminación
+            confirmar = st.checkbox("✅ Confirmo que deseo eliminar esta consulta permanentemente")
+            
+            if confirmar:
+                if st.button("🗑️ ELIMINAR CONSULTA", type="secondary"):
+                    # Usar la función delete_consulta del DataManager
+                    if data_manager.delete_consulta(consulta_eliminar):
+                        st.success("✅ Consulta eliminada exitosamente")
+                        st.rerun()
+                    else:
+                        st.error("❌ Error al eliminar la consulta")
+        
+        # Eliminación masiva
+        st.markdown("---")
+        st.markdown("#### 🧹 Eliminación Masiva")
+        
+        with st.expander("⚙️ Eliminar Todas las Consultas (PELIGROSO)"):
+            st.error("🚨 **MUY PELIGROSO:** Esta acción eliminará TODAS sus consultas registradas.")
+            
+            confirmaciones = []
+            confirmaciones.append(st.checkbox("☑️ Entiendo que se eliminarán TODAS mis consultas"))
+            confirmaciones.append(st.checkbox("☑️ Confirmo que he hecho una copia de respaldo"))
+            confirmaciones.append(st.checkbox("☑️ Realmente quiero eliminar todo"))
+            
+            if all(confirmaciones):
+                codigo_confirmacion = st.text_input(
+                    "🔐 Escriba 'ELIMINAR TODO' para confirmar:",
+                    placeholder="Escriba exactamente: ELIMINAR TODO"
+                )
+                
+                if codigo_confirmacion == "ELIMINAR TODO":
+                    if st.button("🗑️ EJECUTAR ELIMINACIÓN MASIVA", type="secondary"):
+                        if data_manager.delete_all_consultas():
+                            st.success("✅ Todas las consultas han sido eliminadas")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al realizar la eliminación masiva")
+
+
+def aplicar_filtros_visualizacion(df, mostrar_desde, cantidad, ordenar_por):
+    """Aplica filtros de visualización a las consultas"""
+    df_resultado = df.copy()
+    
+    # Filtrar por período
+    if mostrar_desde == "Este mes":
+        fecha_actual = datetime.now()
+        df_resultado = df_resultado[
+            (df_resultado['fecha'].dt.month == fecha_actual.month) &
+            (df_resultado['fecha'].dt.year == fecha_actual.year)
+        ]
+    elif mostrar_desde == "Último mes":
+        fecha_mes_pasado = datetime.now().replace(day=1) - pd.DateOffset(months=1)
+        df_resultado = df_resultado[
+            (df_resultado['fecha'].dt.month == fecha_mes_pasado.month) &
+            (df_resultado['fecha'].dt.year == fecha_mes_pasado.year)
+        ]
+    elif mostrar_desde == "Este año":
+        fecha_actual = datetime.now()
+        df_resultado = df_resultado[df_resultado['fecha'].dt.year == fecha_actual.year]
+    
+    # Ordenar
+    if ordenar_por == "Fecha (desc)":
+        df_resultado = df_resultado.sort_values('fecha', ascending=False)
+    elif ordenar_por == "Fecha (asc)":
+        df_resultado = df_resultado.sort_values('fecha', ascending=True)
+    elif ordenar_por == "Monto (desc)":
+        df_resultado = df_resultado.sort_values('monto_ars', ascending=False)
+    elif ordenar_por == "Monto (asc)":
+        df_resultado = df_resultado.sort_values('monto_ars', ascending=True)
+    elif ordenar_por == "Paciente":
+        df_resultado = df_resultado.sort_values('paciente')
+    elif ordenar_por == "Tratamiento":
+        df_resultado = df_resultado.sort_values('tratamiento')
+    
+    # Limitar cantidad
+    if cantidad != "Todas":
+        df_resultado = df_resultado.head(int(cantidad))
+    
+    return df_resultado
+
+
+def aplicar_filtros_busqueda(df, paciente, tratamiento, medio_pago, fecha_desde, fecha_hasta, rango_montos):
+    """Aplica filtros de búsqueda avanzada"""
+    df_resultado = df.copy()
+    
+    # Filtro por paciente
+    if paciente:
+        df_resultado = df_resultado[
+            df_resultado['paciente'].str.contains(paciente, case=False, na=False)
+        ]
+    
+    # Filtro por tratamiento
+    if tratamiento != "Todos":
+        df_resultado = df_resultado[df_resultado['tratamiento'] == tratamiento]
+    
+    # Filtro por medio de pago
+    if medio_pago != "Todos":
+        df_resultado = df_resultado[df_resultado['medio_pago'] == medio_pago]
+    
+    # Filtro por fechas
+    df_resultado = df_resultado[
+        (df_resultado['fecha'].dt.date >= fecha_desde) &
+        (df_resultado['fecha'].dt.date <= fecha_hasta)
+    ]
+    
+    # Filtro por montos
+    df_resultado = df_resultado[
+        (df_resultado['monto_ars'] >= rango_montos[0]) &
+        (df_resultado['monto_ars'] <= rango_montos[1])
+    ]
+    
+    return df_resultado
+
+
+def formatear_tabla_consultas(df):
+    """Formatea la tabla de consultas para mejor visualización"""
+    df_formato = df.copy()
+    
+    # Formatear fecha
+    df_formato['Fecha'] = df_formato['fecha'].dt.strftime('%d/%m/%Y')
+    df_formato['Hora'] = df_formato['fecha'].dt.strftime('%H:%M')
+    
+    # Formatear monto
+    df_formato['Monto'] = df_formato['monto_ars'].apply(lambda x: f"${x:,.0f}")
+    
+    # Renombrar columnas
+    df_formato = df_formato.rename(columns={
+        'paciente': 'Paciente',
+        'tratamiento': 'Tratamiento',
+        'medio_pago': 'Medio de Pago'
+    })
+    
+    # Seleccionar columnas finales
+    return df_formato[['Fecha', 'Hora', 'Paciente', 'Tratamiento', 'Monto', 'Medio de Pago']]
 
 if __name__ == "__main__":
     main()
