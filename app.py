@@ -847,86 +847,176 @@ def show_dashboard(data_manager, user_info):
         else:
             st.metric("📈 Crecimiento Mensual", "N/A")
     
-    # CÓDIGO DEL GRÁFICO DE COSTOS VS INGRESOS MENSUAL
+    # BARRA DE PROGRESO HORIZONTAL CON SELECTOR DE MES
 
-    # Calcular datos para el gráfico
-    costos_analysis = data_manager.calcular_costo_hora_real()
-    costo_mensual_total = costos_analysis['costo_total_anual'] / 12  # Costo mensual
-
-    # Obtener ingresos del mes actual
-    fecha_actual = datetime.now()
+    # Selector de mes
     if not data_manager.consultas.empty:
-        df_mes_actual = data_manager.consultas[
-            (pd.to_datetime(data_manager.consultas['fecha']).dt.month == fecha_actual.month) &
-            (pd.to_datetime(data_manager.consultas['fecha']).dt.year == fecha_actual.year)
-        ]
-        ingresos_mes_actual = df_mes_actual['monto_ars'].sum()
+        df_fechas = data_manager.consultas.copy()
+        df_fechas['fecha'] = pd.to_datetime(df_fechas['fecha'])
+        
+        # Obtener meses disponibles
+        meses_disponibles = df_fechas['fecha'].dt.to_period('M').unique()
+        meses_disponibles = sorted(meses_disponibles, reverse=True)
+        
+        # Crear opciones para el selectbox
+        opciones_meses = []
+        for mes in meses_disponibles:
+            fecha_mes = pd.to_datetime(str(mes))
+            nombre_mes = fecha_mes.strftime('%B %Y')
+            # Traducir nombre del mes al español
+            nombres_meses = {
+                'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo',
+                'April': 'Abril', 'May': 'Mayo', 'June': 'Junio',
+                'July': 'Julio', 'August': 'Agosto', 'September': 'Septiembre',
+                'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'
+            }
+            for ingles, español in nombres_meses.items():
+                nombre_mes = nombre_mes.replace(ingles, español)
+            opciones_meses.append((str(mes), nombre_mes))
+        
+        # Agregar mes actual si no está en la lista
+        mes_actual = pd.Timestamp.now().to_period('M')
+        if str(mes_actual) not in [opcion[0] for opcion in opciones_meses]:
+            fecha_actual = pd.to_datetime(str(mes_actual))
+            nombre_actual = fecha_actual.strftime('%B %Y')
+            for ingles, español in nombres_meses.items():
+                nombre_actual = nombre_actual.replace(ingles, español)
+            opciones_meses.insert(0, (str(mes_actual), f"{nombre_actual} (Actual)"))
+        
+        # Selector de mes
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader("📊 Progreso Mensual: Costos vs Ingresos")
+        with col2:
+            mes_seleccionado = st.selectbox(
+                "Seleccionar mes:",
+                options=[opcion[0] for opcion in opciones_meses],
+                format_func=lambda x: next(nombre for periodo, nombre in opciones_meses if periodo == x),
+                index=0
+            )
+
     else:
-        ingresos_mes_actual = 0
+        st.subheader("📊 Progreso Mensual: Costos vs Ingresos")
+        mes_seleccionado = str(pd.Timestamp.now().to_period('M'))
 
-    # Preparar datos para el gráfico
-    categorias = ['Costos Mensuales', 'Ingresos del Mes']
-    valores = [costo_mensual_total, ingresos_mes_actual]
-    colores = ['#ef4444', '#10b981']  # Rojo para costos, verde para ingresos
+    # Calcular datos para el mes seleccionado
+    costos_analysis = data_manager.calcular_costo_hora_real()
+    costo_mensual_total = costos_analysis['costo_total_anual'] / 12
 
-    # Crear el gráfico de barras
-    fig_costos_ingresos = px.bar(
-        x=categorias,
-        y=valores,
-        title=f"Costos vs Ingresos - {fecha_actual.strftime('%B %Y')}",
-        labels={'x': '', 'y': 'Monto (ARS)'},
-        color=categorias,
-        color_discrete_map={
-            'Costos Mensuales': '#ef4444',
-            'Ingresos del Mes': '#10b981'
-        }
-    )
+    # Obtener ingresos del mes seleccionado
+    mes_periodo = pd.Period(mes_seleccionado)
+    if not data_manager.consultas.empty:
+        df_mes = data_manager.consultas[
+            pd.to_datetime(data_manager.consultas['fecha']).dt.to_period('M') == mes_periodo
+        ]
+        ingresos_mes = df_mes['monto_ars'].sum()
+        consultas_mes = len(df_mes)
+    else:
+        ingresos_mes = 0
+        consultas_mes = 0
 
-    # Personalizar el gráfico
-    fig_costos_ingresos.update_traces(
-        texttemplate='$%{y:,.0f}', 
-        textposition='outside'
-    )
-
-    fig_costos_ingresos.update_layout(
-        height=400,
-        showlegend=False,
-        yaxis=dict(title='Monto en ARS')
-    )
-
-    # Agregar línea de referencia en el punto de equilibrio
+    # Calcular porcentaje de progreso
     if costo_mensual_total > 0:
-        fig_costos_ingresos.add_hline(
-            y=costo_mensual_total, 
-            line_dash="dash", 
-            line_color="orange",
-            annotation_text="Punto de Equilibrio"
-        )
+        porcentaje_progreso = min((ingresos_mes / costo_mensual_total) * 100, 100)
+        porcentaje_exceso = max(((ingresos_mes / costo_mensual_total) * 100) - 100, 0)
+    else:
+        porcentaje_progreso = 100 if ingresos_mes > 0 else 0
+        porcentaje_exceso = 0
 
-    # Mostrar el gráfico
-    st.plotly_chart(fig_costos_ingresos, use_container_width=True)
+    # Crear la barra de progreso horizontal usando HTML/CSS
+    if porcentaje_progreso >= 100:
+        color_barra = "#10b981"  # Verde para meta cumplida
+        estado = "✅ META CUMPLIDA"
+    elif porcentaje_progreso >= 75:
+        color_barra = "#f59e0b"  # Amarillo para cerca de la meta
+        estado = "🔶 CERCA DE LA META"
+    elif porcentaje_progreso >= 50:
+        color_barra = "#3b82f6"  # Azul para progreso medio
+        estado = "🔵 PROGRESO MEDIO"
+    else:
+        color_barra = "#ef4444"  # Rojo para progreso bajo
+        estado = "🔴 NECESITA IMPULSO"
 
-    # Agregar métricas de contexto debajo del gráfico
-    col1, col2, col3 = st.columns(3)
+    # Mostrar la barra de progreso
+    st.markdown(f"""
+    <div style="background-color: #f3f4f6; border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h4 style="margin: 0; color: #374151;">💰 Cobertura de Costos Mensuales</h4>
+            <span style="font-weight: bold; color: {color_barra}; font-size: 16px;">{estado}</span>
+        </div>
+        
+        <div style="background-color: #e5e7eb; border-radius: 10px; height: 30px; position: relative; overflow: hidden;">
+            <div style="background-color: {color_barra}; height: 100%; width: {porcentaje_progreso}%; 
+                        border-radius: 10px; transition: width 0.3s ease; position: relative;">
+            </div>
+            
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                        font-weight: bold; color: #1f2937; font-size: 14px;">
+                {porcentaje_progreso:.1f}%
+            </div>
+            
+            <!-- Línea de referencia del 100% -->
+            <div style="position: absolute; left: 100%; top: 0; height: 100%; width: 2px; 
+                        background-color: #6b7280; transform: translateX(-2px);"></div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; color: #6b7280;">
+            <span>$0</span>
+            <span style="font-weight: bold;">Meta: ${costo_mensual_total:,.0f}</span>
+            <span>Actual: ${ingresos_mes:,.0f}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Métricas adicionales en columnas
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        diferencia = ingresos_mes_actual - costo_mensual_total
+        diferencia = ingresos_mes - costo_mensual_total
         if diferencia >= 0:
-            st.metric("Resultado del Mes", f"${diferencia:,.0f} ARS", delta="Ganancia")
+            st.metric("💰 Resultado", f"${diferencia:,.0f}", delta="Ganancia" if diferencia > 0 else "Equilibrio")
         else:
-            st.metric("Resultado del Mes", f"${abs(diferencia):,.0f} ARS", delta="Déficit")
+            st.metric("💰 Faltante", f"${abs(diferencia):,.0f}", delta="Déficit")
 
     with col2:
-        if costo_mensual_total > 0:
-            cobertura = (ingresos_mes_actual / costo_mensual_total) * 100
-            st.metric("% Costos Cubiertos", f"{cobertura:.1f}%")
-        else:
-            st.metric("% Costos Cubiertos", "N/A")
-
+        st.metric("📊 Consultas", f"{consultas_mes}")
+        
     with col3:
-        if costo_mensual_total > 0 and ingresos_mes_actual < costo_mensual_total:
-            faltante = costo_mensual_total - ingresos_mes_actual
-            st.metric("Falta para Equilibrio", f"${faltante:,.0f} ARS")
+        if consultas_mes > 0:
+            promedio_consulta = ingresos_mes / consultas_mes
+            st.metric("📈 Promedio/Consulta", f"${promedio_consulta:,.0f}")
+        else:
+            st.metric("📈 Promedio/Consulta", "$0")
+
+    with col4:
+        if costo_mensual_total > 0 and diferencia < 0:
+            consultas_faltantes = abs(diferencia) / (promedio_consulta if consultas_mes > 0 and promedio_consulta > 0 else 30000)
+            st.metric("🎯 Consultas Faltantes", f"{consultas_faltantes:.0f}")
+        elif porcentaje_exceso > 0:
+            st.metric("🎉 Exceso sobre Meta", f"{porcentaje_exceso:.1f}%")
+        else:
+            st.metric("✅ Estado", "En Meta")
+
+    # Mensaje motivacional según el estado
+    if porcentaje_progreso >= 100:
+        if porcentaje_exceso > 50:
+            st.success("🎉 ¡Excelente mes! Has superado tus costos por un amplio margen.")
+        else:
+            st.success("✅ ¡Felicitaciones! Has cubierto todos tus costos mensuales.")
+    elif porcentaje_progreso >= 75:
+        falta = costo_mensual_total - ingresos_mes
+        st.warning(f"🔥 ¡Vas muy bien! Solo faltan ${falta:,.0f} ARS para cubrir todos los costos.")
+    elif porcentaje_progreso >= 50:
+        st.info("💪 Progreso sólido. Mantén el ritmo para alcanzar la meta mensual.")
+    else:
+        if consultas_mes == 0:
+            st.error("📝 Aún no hay consultas registradas este mes. ¡Es hora de empezar!")
+        else:
+            st.warning("⚡ El mes necesita más impulso. Considera estrategias para aumentar consultas.")
+
+    # Solo mostrar si hay costos configurados
+    if costos_analysis['costo_total_anual'] == 0:
+        st.info("💡 Configure sus equipos y gastos fijos para ver el análisis completo de costos.")
 
     # Alertas personalizadas
     if dias_desde_ultima > 7:
