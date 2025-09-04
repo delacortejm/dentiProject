@@ -808,13 +808,13 @@ def show_dashboard(data_manager, user_info):
         ])
         # Mostrar métricas simples
         col_a, col_b = st.columns(2)
-        with col_a:
+        with col_b:
             if semana_pasada > 0:
                 delta = semana_actual - semana_pasada
                 st.metric("Esta Semana", semana_actual, delta=f"{delta:+d}")
             else:
                 st.metric("Esta Semana", semana_actual)
-        with col_b:
+        with col_a:
             st.metric("Semana Pasada", semana_pasada)
 
     with col2:
