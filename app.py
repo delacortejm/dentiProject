@@ -786,20 +786,88 @@ def show_dashboard(data_manager, user_info):
     
     with col1:
         # 8. Heatmap de horarios (simulado con horas del día)
-        st.markdown("**⏰ Distribución por Hora del Día**")
-        df_consultas['hora'] = df_consultas['fecha'].dt.hour
-        horas_consultas = df_consultas['hora'].value_counts().sort_index()
-        
-        fig_horas = px.bar(
-            x=horas_consultas.index,
-            y=horas_consultas.values,
-            title="",
-            labels={'x': 'Hora del Día', 'y': 'Cantidad de Consultas'},
-            color=horas_consultas.values,
-            color_continuous_scale='YlOrRd'
-        )
-        fig_horas.update_layout(height=300, showlegend=False)
-        st.plotly_chart(fig_horas, use_container_width=True)
+        st.markdown("**🔄 Comparación: Semana Actual vs Semana Pasada**")
+    
+    # Agregar datos de semanas
+    df_consultas['dia_semana'] = df_consultas['fecha'].dt.day_name()
+    df_consultas['numero_semana'] = df_consultas['fecha'].dt.isocalendar().week
+    df_consultas['año'] = df_consultas['fecha'].dt.year
+    
+    # Obtener la semana actual y pasada
+    fecha_actual = date.today()
+    numero_semana_actual = fecha_actual.isocalendar()[1]
+    año_actual = fecha_actual.year
+    
+    # Filtrar datos por semanas
+    semana_actual = df_consultas[
+        (df_consultas['numero_semana'] == numero_semana_actual) & 
+        (df_consultas['año'] == año_actual)
+    ]
+    
+    semana_pasada = df_consultas[
+        (df_consultas['numero_semana'] == numero_semana_actual - 1) & 
+        (df_consultas['año'] == año_actual)
+    ]
+    
+    # Si no hay datos de la semana pasada en el año actual, buscar en el año anterior
+    if semana_pasada.empty and numero_semana_actual == 1:
+        semana_pasada = df_consultas[
+            (df_consultas['numero_semana'] == 52) & 
+            (df_consultas['año'] == año_actual - 1)
+        ]
+    
+    # Contar consultas por día de la semana
+    dias_orden = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    dias_español = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    
+    # Procesar datos de ambas semanas
+    consultas_semana_actual = semana_actual['dia_semana'].value_counts().reindex(dias_orden, fill_value=0)
+    consultas_semana_pasada = semana_pasada['dia_semana'].value_counts().reindex(dias_orden, fill_value=0)
+    
+    # Crear el gráfico de comparación
+    fig_comparison = go.Figure()
+    
+    fig_comparison.add_trace(go.Bar(
+        x=dias_español,
+        y=consultas_semana_actual.values,
+        name=f'Semana Actual (S{numero_semana_actual})',
+        marker_color='#3b82f6',
+        opacity=0.8
+    ))
+    
+    fig_comparison.add_trace(go.Bar(
+        x=dias_español,
+        y=consultas_semana_pasada.values,
+        name=f'Semana Pasada (S{numero_semana_actual-1})',
+        marker_color='#ef4444',
+        opacity=0.6
+    ))
+    
+    fig_comparison.update_layout(
+        title="",
+        xaxis_title="Día de la Semana",
+        yaxis_title="Cantidad de Consultas",
+        barmode='group',
+        height=300,
+        showlegend=True
+    )
+    
+    st.plotly_chart(fig_comparison, use_container_width=True)
+    
+    # Mostrar métricas de comparación debajo del gráfico
+    total_actual = consultas_semana_actual.sum()
+    total_pasada = consultas_semana_pasada.sum()
+    
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.metric("Esta Semana", total_actual)
+    with col_b:
+        if total_pasada > 0:
+            cambio = total_actual - total_pasada
+            cambio_pct = (cambio / total_pasada) * 100
+            st.metric("vs Semana Pasada", f"{cambio:+d}", delta=f"{cambio_pct:+.1f}%")
+        else:
+            st.metric("Semana Pasada", "Sin datos")
     
     with col2:
         # 9. Tendencia de precios promedio
