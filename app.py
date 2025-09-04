@@ -754,7 +754,8 @@ def show_dashboard(data_manager, user_info):
     with col2:
         # 6. Medios de pago (dona)
         st.markdown("**💳 Medios de Pago**")
-        medios_pago = df_consultas['medio_pago'].value_counts()
+        df_consultas['medio_pago_normalizado'] = df_consultas['medio_pago'].apply(normalizar_medio_pago)
+        medios_pago = df_consultas['medio_pago_normalizado'].value_counts()
         
         fig_dona = px.pie(
             values=medios_pago.values, 
@@ -1069,9 +1070,14 @@ def show_calculadora_inteligente(data_manager):
             
             # Selección de tratamiento con opción personalizada
             lista_tratamientos = [
-                "Consulta", "Limpieza", "Operatoria Simple", "Operatoria Compleja", 
-                "Endodoncia", "Corona", "Extracción Simple", "Extracción Compleja", "Otro"
-            ]
+            "Consulta", "Consulta de Urgencia", "Limpieza", 
+            "Operatoria Simple", "Operatoria Compleja", 
+            "Endodoncia Unirradicular", "Endodoncia Multirradicular",
+            "Placa Estabilizadora Oclusal", "Provisorio", 
+            "Corona Metálica", "Corona de Porcelana",
+            "Extracción Simple", "Extracción Compleja", 
+            "Blanqueamiento", "Implante", "Otro"
+            ]       
             
             tratamiento_base = st.selectbox("Tipo de Tratamiento", lista_tratamientos)
             
@@ -1639,8 +1645,37 @@ def show_nueva_consulta(data_manager):
         
         with col1:  # ← CORREGIDO: DENTRO DEL FORM
             paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
-            tratamiento = st.selectbox("Tipo de Tratamiento *", 
-                ["Consulta", "Limpieza", "Operatoria Simple", "Endodoncia", "Otro"])
+            tratamientos_base = [
+        "Consulta", "Consulta de Urgencia", "Limpieza", 
+        "Operatoria Simple", "Operatoria Compleja", 
+        "Endodoncia Unirradicular", "Endodoncia Multirradicular",
+        "Placa Estabilizadora Oclusal", "Provisorio", 
+        "Corona Metálica", "Corona de Porcelana",
+        "Extracción Simple", "Extracción Compleja", 
+        "Blanqueamiento", "Implante", "Otro"
+    ]
+
+    # Obtener tratamientos personalizados del usuario
+    tratamientos_personalizados = data_manager.config.get('tratamientos_personalizados', [])
+    todos_tratamientos = tratamientos_base + tratamientos_personalizados
+
+    tratamiento = st.selectbox("Tipo de Tratamiento *", todos_tratamientos)
+
+    # Opción para agregar nuevo tratamiento
+    if tratamiento == "Otro":
+        nuevo_tratamiento = st.text_input(
+            "Especificar nuevo tratamiento:",
+            placeholder="Ej: Rehabilitación completa"
+        )
+        if nuevo_tratamiento:
+            agregar_permanente = st.checkbox("Guardar este tratamiento para futuras consultas")
+            if agregar_permanente and nuevo_tratamiento not in tratamientos_personalizados:
+                if 'tratamientos_personalizados' not in data_manager.config:
+                    data_manager.config['tratamientos_personalizados'] = []
+                data_manager.config['tratamientos_personalizados'].append(nuevo_tratamiento)
+                data_manager.save_data()
+                st.success(f"Tratamiento '{nuevo_tratamiento}' agregado permanentemente")
+            tratamiento = nuevo_tratamiento if nuevo_tratamiento else "Otro"
             
             fecha_consulta = st.date_input("📅 Fecha de la Consulta *", value=date.today())
 
@@ -2237,6 +2272,34 @@ def formatear_tabla_consultas(df):
     
     # Seleccionar columnas finales
     return df_formato[['Fecha', 'Hora', 'Paciente', 'Tratamiento', 'Monto', 'Medio de Pago']]
+
+def normalizar_medio_pago(medio_pago):
+    """Normaliza medios de pago para evitar duplicados por mayúsculas/minúsculas"""
+    if pd.isna(medio_pago):
+        return "No especificado"
+    
+    medio_clean = str(medio_pago).strip().lower()
+    
+    # Mapeo de normalizaciones
+    normalizaciones = {
+        'efectivo': 'Efectivo',
+        'cash': 'Efectivo',
+        'transferencia': 'Transferencia',
+        'transfer': 'Transferencia',
+        'débito': 'Débito',
+        'debito': 'Débito',
+        'debit': 'Débito',
+        'crédito': 'Crédito',
+        'credito': 'Crédito',
+        'credit': 'Crédito',
+        'mercado pago': 'Mercado Pago',
+        'mercadopago': 'Mercado Pago',
+        'mp': 'Mercado Pago',
+        'otros': 'Otros',
+        'other': 'Otros'
+    }
+    
+    return normalizaciones.get(medio_clean, medio_pago.strip().title())
 
 if __name__ == "__main__":
     main()
