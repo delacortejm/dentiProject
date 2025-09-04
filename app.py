@@ -785,41 +785,41 @@ def show_dashboard(data_manager, user_info):
     col1, col2 = st.columns(2)
     
     with col1:
-        # Comparación semanal simple
+    # Comparación semanal simple - LADO IZQUIERDO
         st.markdown("**📊 Esta Semana vs Anterior**")
-    
-    # 8. Calcular semanas
-    df_consultas['numero_semana'] = df_consultas['fecha'].dt.isocalendar().week
-    df_consultas['año'] = df_consultas['fecha'].dt.year
-    
-    fecha_actual = date.today()
-    numero_semana_actual = fecha_actual.isocalendar()[1]
-    año_actual = fecha_actual.year
-    
-    # Contar consultas por semana
-    semana_actual = len(df_consultas[
-        (df_consultas['numero_semana'] == numero_semana_actual) & 
-        (df_consultas['año'] == año_actual)
-    ])
-    
-    semana_pasada = len(df_consultas[
-        (df_consultas['numero_semana'] == numero_semana_actual - 1) & 
-        (df_consultas['año'] == año_actual)
-    ])
-    
-    # Mostrar métricas simples
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.metric("Esta Semana", semana_actual)
-    with col_b:
-        if semana_pasada > 0:
-            delta = semana_actual - semana_pasada
-            st.metric("Semana Pasada", semana_pasada, delta=f"{delta:+d}")
-        else:
-            st.metric("Semana Pasada", semana_pasada)
-    
+        
+        # Calcular semanas
+        df_consultas['numero_semana'] = df_consultas['fecha'].dt.isocalendar().week
+        df_consultas['año'] = df_consultas['fecha'].dt.year
+        
+        fecha_actual = date.today()
+        numero_semana_actual = fecha_actual.isocalendar()[1]
+        año_actual = fecha_actual.year
+        
+        # Contar consultas por semana
+        semana_actual = len(df_consultas[
+            (df_consultas['numero_semana'] == numero_semana_actual) & 
+            (df_consultas['año'] == año_actual)
+        ])
+        
+        semana_pasada = len(df_consultas[
+            (df_consultas['numero_semana'] == numero_semana_actual - 1) & 
+            (df_consultas['año'] == año_actual)
+        ])
+        
+        # Mostrar métricas simples
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Esta Semana", semana_actual)
+        with col_b:
+            if semana_pasada > 0:
+                delta = semana_actual - semana_pasada
+                st.metric("Semana Pasada", semana_pasada, delta=f"{delta:+d}")
+            else:
+                st.metric("Semana Pasada", semana_pasada)
+
     with col2:
-        # 9. Tendencia de precios promedio
+        # 9. Tendencia de precios promedio - LADO DERECHO
         st.markdown("**💹 Evolución Precio Promedio**")
         precio_promedio_mes = df_consultas.groupby(df_consultas['fecha'].dt.to_period('M'))['monto_ars'].mean()
         precio_promedio_mes.index = precio_promedio_mes.index.astype(str)
