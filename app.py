@@ -808,14 +808,14 @@ def show_dashboard(data_manager, user_info):
         ])
         # Mostrar métricas simples
         col_a, col_b = st.columns(2)
-        with col_b:
-            st.metric("Esta Semana", semana_actual)
         with col_a:
             if semana_pasada > 0:
                 delta = semana_actual - semana_pasada
-                st.metric("Semana Pasada", semana_pasada, delta=f"{delta:+d}")
+                st.metric("Esta Semana", semana_actual, delta=f"{delta:+d}")
             else:
-                st.metric("Semana Pasada", semana_pasada)
+                st.metric("Esta Semana", semana_actual)
+        with col_b:
+            st.metric("Semana Pasada", semana_pasada)
 
     with col2:
         # 9. Tendencia de precios promedio - LADO DERECHO
