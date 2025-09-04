@@ -801,16 +801,16 @@ def show_dashboard(data_manager, user_info):
             (df_consultas['numero_semana'] == numero_semana_actual - 1) & 
             (df_consultas['año'] == año_actual)
         ])
-        
+
         semana_actual = len(df_consultas[
             (df_consultas['numero_semana'] == numero_semana_actual) & 
             (df_consultas['año'] == año_actual)
         ])
         # Mostrar métricas simples
         col_a, col_b = st.columns(2)
-        with col_a:
-            st.metric("Esta Semana", semana_actual)
         with col_b:
+            st.metric("Esta Semana", semana_actual)
+        with col_a:
             if semana_pasada > 0:
                 delta = semana_actual - semana_pasada
                 st.metric("Semana Pasada", semana_pasada, delta=f"{delta:+d}")
