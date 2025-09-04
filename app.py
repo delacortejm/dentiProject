@@ -786,7 +786,7 @@ def show_dashboard(data_manager, user_info):
     
     with col1:
         # Comparación semanal simple
-    st.markdown("**📊 Esta Semana vs Anterior**")
+        st.markdown("**📊 Esta Semana vs Anterior**")
     
     # 8. Calcular semanas
     df_consultas['numero_semana'] = df_consultas['fecha'].dt.isocalendar().week
