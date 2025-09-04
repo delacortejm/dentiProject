@@ -1643,53 +1643,65 @@ def show_nueva_consulta(data_manager):
     with st.form("nueva_consulta"):
         col1, col2 = st.columns(2)
         
-        with col1:  # ← CORREGIDO: DENTRO DEL FORM
+        with col1:
             paciente = st.text_input("Nombre del Paciente *", placeholder="Ej: Juan Pérez")
+            
             tratamientos_base = [
-        "Consulta", "Consulta de Urgencia", "Limpieza", 
-        "Operatoria Simple", "Operatoria Compleja", 
-        "Endodoncia Unirradicular", "Endodoncia Multirradicular",
-        "Placa Estabilizadora Oclusal", "Provisorio", 
-        "Corona Metálica", "Corona de Porcelana",
-        "Extracción Simple", "Extracción Compleja", 
-        "Blanqueamiento", "Implante", "Otro"
-    ]
-
-    # Obtener tratamientos personalizados del usuario
-    tratamientos_personalizados = data_manager.config.get('tratamientos_personalizados', [])
-    todos_tratamientos = tratamientos_base + tratamientos_personalizados
-
-    tratamiento = st.selectbox("Tipo de Tratamiento *", todos_tratamientos)
-
-    # Opción para agregar nuevo tratamiento
-    if tratamiento == "Otro":
-        nuevo_tratamiento = st.text_input(
-            "Especificar nuevo tratamiento:",
-            placeholder="Ej: Rehabilitación completa"
-        )
-        if nuevo_tratamiento:
-            agregar_permanente = st.checkbox("Guardar este tratamiento para futuras consultas")
-            if agregar_permanente and nuevo_tratamiento not in tratamientos_personalizados:
-                if 'tratamientos_personalizados' not in data_manager.config:
-                    data_manager.config['tratamientos_personalizados'] = []
-                data_manager.config['tratamientos_personalizados'].append(nuevo_tratamiento)
-                data_manager.save_data()
-                st.success(f"Tratamiento '{nuevo_tratamiento}' agregado permanentemente")
-            tratamiento = nuevo_tratamiento if nuevo_tratamiento else "Otro"
+                "Consulta", "Consulta de Urgencia", "Limpieza", 
+                "Operatoria Simple", "Operatoria Compleja", 
+                "Endodoncia Unirradicular", "Endodoncia Multirradicular",
+                "Placa Estabilizadora Oclusal", "Provisorio", 
+                "Corona Metálica", "Corona de Porcelana",
+                "Extracción Simple", "Extracción Compleja", 
+                "Blanqueamiento", "Implante", "Otro"
+            ]
+            
+            # Obtener tratamientos personalizados del usuario
+            tratamientos_personalizados = data_manager.config.get('tratamientos_personalizados', [])
+            todos_tratamientos = tratamientos_base + tratamientos_personalizados
+            
+            tratamiento = st.selectbox("Tipo de Tratamiento *", todos_tratamientos)
+            
+            # Campo para nuevo tratamiento si selecciona "Otro"
+            nuevo_tratamiento_input = ""
+            agregar_permanente = False
+            
+            if tratamiento == "Otro":
+                nuevo_tratamiento_input = st.text_input(
+                    "Especificar nuevo tratamiento:",
+                    placeholder="Ej: Rehabilitación completa"
+                )
+                if nuevo_tratamiento_input:
+                    agregar_permanente = st.checkbox("Guardar este tratamiento para futuras consultas")
             
             fecha_consulta = st.date_input("📅 Fecha de la Consulta *", value=date.today())
 
-        with col2:  # ← CORREGIDO: DENTRO DEL FORM
+        with col2:
             monto_ars = st.number_input("Monto en ARS *", min_value=0.0, step=1000.0, value=30000.0)
             medio_pago = st.selectbox("Medio de Pago *", 
                 ["Efectivo", "Transferencia", "Débito", "Crédito", "Otros"])
         
+        # BOTÓN DE SUBMIT DENTRO DEL FORM
         submitted = st.form_submit_button("✅ Registrar Consulta", type="primary")
         
+        # LÓGICA DESPUÉS DEL SUBMIT
         if submitted:
-            if paciente and tratamiento and monto_ars > 0:
+            # Procesar tratamiento personalizado
+            tratamiento_final = tratamiento
+            if tratamiento == "Otro" and nuevo_tratamiento_input:
+                tratamiento_final = nuevo_tratamiento_input
+                
+                # Guardar tratamiento personalizado si se marcó la opción
+                if agregar_permanente and nuevo_tratamiento_input not in tratamientos_personalizados:
+                    if 'tratamientos_personalizados' not in data_manager.config:
+                        data_manager.config['tratamientos_personalizados'] = []
+                    data_manager.config['tratamientos_personalizados'].append(nuevo_tratamiento_input)
+                    data_manager.save_data()
+                    st.success(f"Tratamiento '{nuevo_tratamiento_input}' agregado permanentemente")
+            
+            if paciente and tratamiento_final and monto_ars > 0:
                 try:
-                    data_manager.add_consulta(paciente, tratamiento, monto_ars, medio_pago, fecha_consulta)
+                    data_manager.add_consulta(paciente, tratamiento_final, monto_ars, medio_pago, fecha_consulta)
                     st.success(f"✅ Consulta registrada: {paciente} - ${monto_ars:,.0f} ARS")
                     st.rerun()
                 except Exception as e:
