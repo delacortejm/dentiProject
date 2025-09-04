@@ -786,7 +786,7 @@ def show_dashboard(data_manager, user_info):
     
     with col1:
     # Comparación semanal simple - LADO IZQUIERDO
-        st.markdown("**📊 Esta Semana vs Anterior**")
+        st.markdown("**📊 Tratamientos esta Semana vs Anterior**")
         
         # Calcular semanas
         df_consultas['numero_semana'] = df_consultas['fecha'].dt.isocalendar().week
@@ -797,16 +797,15 @@ def show_dashboard(data_manager, user_info):
         año_actual = fecha_actual.year
         
         # Contar consultas por semana
-        semana_actual = len(df_consultas[
-            (df_consultas['numero_semana'] == numero_semana_actual) & 
-            (df_consultas['año'] == año_actual)
-        ])
-        
         semana_pasada = len(df_consultas[
             (df_consultas['numero_semana'] == numero_semana_actual - 1) & 
             (df_consultas['año'] == año_actual)
         ])
         
+        semana_actual = len(df_consultas[
+            (df_consultas['numero_semana'] == numero_semana_actual) & 
+            (df_consultas['año'] == año_actual)
+        ])
         # Mostrar métricas simples
         col_a, col_b = st.columns(2)
         with col_a:
